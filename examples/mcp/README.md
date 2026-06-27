@@ -41,6 +41,11 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 Restart Claude Desktop. Then ask: *"Validate the address Rådhuspladsen 1, 1550
 København and tell me which parish (sogn) it's in."*
 
+> **Not on npm yet?** If `npx @danadresse/mcp-server` reports the package can't be
+> found, it hasn't been published yet. Run it from source meanwhile: clone this
+> repo, `cd mcp-server && npm install && npm run build`, then point the config's
+> `command` at `node` with `args` `["/abs/path/mcp-server/dist/index.js"]`.
+
 ## Claude Code
 
 ```bash

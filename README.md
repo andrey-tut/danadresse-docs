@@ -6,8 +6,8 @@
 [![API status](https://img.shields.io/badge/api-live-success)](https://api.danadresse.dk/api/v1/healthz)
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-3.1-blue)](openapi.yaml)
 [![Docs](https://img.shields.io/badge/docs-Swagger%20%C2%B7%20Redoc-blueviolet)](https://andrey-tut.github.io/danadresse-docs/)
-[![npm client](https://img.shields.io/npm/v/@danadresse/client?label=%40danadresse%2Fclient)](https://www.npmjs.com/package/@danadresse/client)
-[![MCP server](https://img.shields.io/npm/v/@danadresse/mcp-server?label=%40danadresse%2Fmcp-server)](https://www.npmjs.com/package/@danadresse/mcp-server)
+[![npm client](https://img.shields.io/badge/npm-%40danadresse%2Fclient-cb3837?logo=npm)](https://www.npmjs.com/package/@danadresse/client)
+[![MCP server](https://img.shields.io/badge/MCP-%40danadresse%2Fmcp--server-7c3aed)](https://www.npmjs.com/package/@danadresse/mcp-server)
 [![License: MIT](https://img.shields.io/badge/examples-MIT-green)](LICENSE)
 
 **Danadresse** is a drop-in replacement for [DAWA](https://dawa.aws.dk) (Danmarks
