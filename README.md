@@ -21,8 +21,10 @@ Matriklen, DAGI), so it keeps working after DAWA shuts down.
 
 ## 📖 Interactive API reference
 
+[![Swagger UI](screenshots/swagger.png)](https://andrey-tut.github.io/danadresse-docs/swagger.html)
+
+- **Swagger UI (try it live):** <https://andrey-tut.github.io/danadresse-docs/swagger.html> — pick the `api.danadresse.dk` server, hit **Authorize** (or go keyless on the free tier) and **Try it out** on any endpoint
 - **Redoc:** <https://andrey-tut.github.io/danadresse-docs/>
-- **Swagger UI (try it live):** <https://andrey-tut.github.io/danadresse-docs/swagger.html>
 - **OpenAPI spec:** [`openapi.yaml`](openapi.yaml) · [`openapi.json`](openapi.json) — 130+ endpoints
 
 ## 🚀 Quick start
