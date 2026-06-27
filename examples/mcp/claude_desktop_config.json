@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "danadresse": {
+      "command": "npx",
+      "args": ["-y", "@danadresse/mcp-server"],
+      "env": {
+        "DANADRESSE_API_KEY": "dawa_live_…"
+      }
+    }
+  }
+}

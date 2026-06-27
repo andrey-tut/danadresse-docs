@@ -1,0 +1,43 @@
+{
+  "name": "@danadresse/js",
+  "version": "0.1.0",
+  "description": "Drop-in DAWA replacement — TypeScript/JavaScript SDK for Danish address API by LynBro ApS",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": ["dawa", "danish", "address", "autocomplete", "geocoding", "denmark", "lynbro"],
+  "author": "LynBro ApS <hello@lynbro.dk>",
+  "license": "MIT",
+  "homepage": "https://danadresse.dk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danadresse/js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/danadresse/js/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.0",
+    "tsup": "^8.2.4",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  }
+}

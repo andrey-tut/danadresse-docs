@@ -1,0 +1,42 @@
+[project]
+name = "danadresse"
+version = "0.1.0"
+description = "Drop-in DAWA replacement — Python SDK for Danish address API by LynBro ApS"
+readme = "README.md"
+authors = [{ name = "LynBro ApS", email = "hello@lynbro.dk" }]
+license = { text = "MIT" }
+requires-python = ">=3.9"
+keywords = ["dawa", "danish", "address", "autocomplete", "geocoding", "denmark"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "httpx>=0.24",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-httpx>=0.30", "respx>=0.20"]
+
+[project.urls]
+Homepage = "https://danadresse.dk"
+Documentation = "https://docs.danadresse.dk"
+Source = "https://github.com/danadresse/python"
+Issues = "https://github.com/danadresse/python/issues"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["danadresse*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

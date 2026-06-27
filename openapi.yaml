@@ -1,0 +1,6057 @@
+openapi: 3.1.0
+info:
+  title: Danadresse API — DAWA drop-in replacement
+  summary: Drop-in REST replacement for dawa.aws.dk · Free tier 1000/month
+  description: '**Drop-in replacement for the Danish Address Web API (DAWA).** DAWA
+    closes on 17 August 2026 — Danadresse takes over with the exact same endpoints,
+    query parameters, JSON shapes and UUIDs.
+
+
+    ### Migration in 30 seconds
+
+    1. Replace your base URL `https://dawa.aws.dk` → `https://api.danadresse.dk`.
+
+    2. Add an `X-Api-Key: dawa_live_…` header to every request (get one free at <https://danadresse.dk/dashboard/signup>).
+
+    3. Ship. Your DAR/DAGI IDs still resolve.
+
+
+    Free tier: 1 000 calls/month per IP (no key needed). Paid tiers: Hobby/Basic/Pro/Enterprise
+    — see <https://danadresse.dk/#pricing>.
+
+
+    ### Auth
+
+    Public DAWA endpoints (`/adresser`, `/autocomplete`, …) accept the key as either
+    `X-Api-Key` header or `?api_key=` query — either is fine. Dashboard endpoints
+    under `/api/v1/auth`, `/api/v1/keys`, `/api/v1/billing` require a JWT Bearer token
+    from `POST /api/v1/auth/login`.
+
+
+    Built by [LynBro ApS](https://lynbro.dk).'
+  contact:
+    name: Danadresse Support
+    url: https://danadresse.dk/dashboard
+    email: support@danadresse.dk
+  license:
+    name: 'Data: CC BY 4.0 (Klimadatastyrelsen) · API: proprietary'
+    url: https://danadresse.dk/terms
+  version: 1.0.0
+  x-logo:
+    url: https://danadresse.dk/static/img/logo_mark.png
+servers:
+- url: https://api.danadresse.dk
+  description: Production
+paths:
+  /autocomplete:
+    get:
+      tags:
+      - dawa:autocomplete
+      summary: Typo-tolerant address autocomplete (DAWA-compatible)
+      description: "Returns up to 20 ranked address suggestions for an incremental\
+        \ query. Matches DAWA's response shape exactly so existing clients only need\
+        \ the base-URL swap.\n\n**Phases:**\n- street only → `type=vejnavn` suggestions\
+        \ (Bumyren typo → Bymuren)\n- street + husnr → `type=adresse` units in that\
+        \ building\n  (multi-apartment: all units; single villa: 1 row)\n- street\
+        \ + husnr + etage/dør → 1 exact `type=adresse` hit\n\nPunctuation tolerated:\
+        \ `Bymuren 68, 3. th` and `Bymuren 68 3 th` yield identical results."
+      operationId: autocomplete_autocomplete_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+          description: Search query — street, street+husnr, or full address
+          examples:
+          - Rådhuspladsen 1
+          - Bymuren 68, 3. th
+          - Vesterbrogade 4 1620
+          - kobenhavn
+          - raadhuspladsen
+          default: ''
+          title: Q
+        description: Search query — street, street+husnr, or full address
+      - name: struktur
+        in: query
+        required: false
+        schema:
+          enum:
+          - mini
+          - full
+          type: string
+          default: mini
+          title: Struktur
+      - name: srid
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 4326
+          title: Srid
+      - name: fuzzy
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Typo tolerance. Falls back to ASCII↔Danish folding (oe↔ø, aa↔å,
+            ae↔æ). Accepts the widget's empty-string form.
+          title: Fuzzy
+        description: Typo tolerance. Falls back to ASCII↔Danish folding (oe↔ø, aa↔å,
+          ae↔æ). Accepts the widget's empty-string form.
+      - name: adgangsadresserOnly
+        in: query
+        required: false
+        schema:
+          type: boolean
+          description: Skip the `type=adresse` (etage/dør) tier
+          default: false
+          title: Adgangsadresseronly
+        description: Skip the `type=adresse` (etage/dør) tier
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          description: Max number of suggestions (DAWA default 20)
+          default: 20
+          title: Per Side
+        description: Max number of suggestions (DAWA default 20)
+      - name: params
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: JSON-encoded filter, e.g. {"kommunekode":"0101"}
+          examples:
+          - '{"kommunekode":"0101"}'
+          title: Params
+        description: JSON-encoded filter, e.g. {"kommunekode":"0101"}
+      - name: callback
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: JSONP callback function name
+          title: Callback
+        description: JSONP callback function name
+      - name: type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 'Target tier: ''adresse'' (default, drills to units), ''adgangsadresse''
+            (terminal), or ''vejnavn''.'
+          title: Type
+        description: 'Target tier: ''adresse'' (default, drills to units), ''adgangsadresse''
+          (terminal), or ''vejnavn''.'
+      - name: caretpos
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          description: Widget cursor pos (accepted; drill is driven by query text).
+          title: Caretpos
+        description: Widget cursor pos (accepted; drill is driven by query text).
+      - name: adgangsadresseid
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Widget hint (accepted).
+          title: Adgangsadresseid
+        description: Widget hint (accepted).
+      - name: startfra
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Widget hint (accepted).
+          title: Startfra
+        description: Widget hint (accepted).
+      - name: supplerendebynavn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Widget flag (accepted).
+          title: Supplerendebynavn
+        description: Widget flag (accepted).
+      - name: stormodtagerpostnumre
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Widget flag.
+          title: Stormodtagerpostnumre
+        description: Widget flag.
+      - name: multilinje
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Widget flag (accepted).
+          title: Multilinje
+        description: Widget flag (accepted).
+      responses:
+        '200':
+          description: Ranked suggestions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Autocomplete Autocomplete Get
+              examples:
+                street_with_typo:
+                  summary: Typo correction
+                  value:
+                  - type: vejnavn
+                    tekst: Bymuren
+                    forslagstekst: 'Bymuren '
+                    caretpos: 8
+                    data:
+                      navn: Bymuren
+                      href: /vejnavne/Bymuren
+                full_apartment:
+                  summary: Specific apartment in a multi-unit building
+                  value:
+                  - type: adresse
+                    tekst: Bymuren 68, 3. th, 2650 Hvidovre
+                    forslagstekst: Bymuren 68, 3. th, 2650 Hvidovre
+                    caretpos: 33
+                    data:
+                      id: 0a3f50a5-4bab-32b8-e044-0003ba298018
+                      status: 1
+                      vejnavn: Bymuren
+                      husnr: '68'
+                      etage: '3'
+                      dør: th
+                      postnr: '2650'
+                      postnrnavn: Hvidovre
+                      kommunekode: '0167'
+                      kommunenavn: Hvidovre
+                      x: 12.449
+                      y: 55.6307
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /postnumre:
+    get:
+      tags:
+      - dawa:postnumre
+      summary: List Postnumre
+      operationId: list_postnumre_postnumre_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: nr
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Nr
+      - name: navn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Navn
+      - name: side
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Side
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 100
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Postnumre Postnumre Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /postnumre/autocomplete:
+    get:
+      tags:
+      - dawa:postnumre
+      summary: Autocomplete Postnumre
+      operationId: autocomplete_postnumre_postnumre_autocomplete_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 20
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Autocomplete Postnumre Postnumre Autocomplete Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /postnumre/{nr}:
+    get:
+      tags:
+      - dawa:postnumre
+      summary: Get Postnummer
+      operationId: get_postnummer_postnumre__nr__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: nr
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Nr
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Postnummer Postnumre  Nr  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /kommuner:
+    get:
+      tags:
+      - dawa:kommuner
+      summary: List Kommuner
+      operationId: list_kommuner_kommuner_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: navn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Navn
+      - name: kode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Kode
+      - name: regionskode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Regionskode
+      - name: side
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Side
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 500
+          minimum: 1
+          default: 100
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Kommuner Kommuner Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /kommuner/autocomplete:
+    get:
+      tags:
+      - dawa:kommuner
+      summary: Autocomplete Kommuner
+      operationId: autocomplete_kommuner_kommuner_autocomplete_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 500
+          minimum: 1
+          default: 20
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Autocomplete Kommuner Kommuner Autocomplete Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /kommuner/{kode}:
+    get:
+      tags:
+      - dawa:kommuner
+      summary: Get Kommune
+      operationId: get_kommune_kommuner__kode__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: kode
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Kode
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Kommune Kommuner  Kode  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /vejnavne:
+    get:
+      tags:
+      - dawa:vejnavne
+      summary: List Vejnavne
+      operationId: list_vejnavne_vejnavne_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: navn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Navn
+      - name: side
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Side
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 100
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Vejnavne Vejnavne Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /vejnavne/autocomplete:
+    get:
+      tags:
+      - dawa:vejnavne
+      summary: Autocomplete Vejnavne
+      operationId: autocomplete_vejnavne_vejnavne_autocomplete_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 20
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Autocomplete Vejnavne Vejnavne Autocomplete Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /vejnavne/{id}:
+    get:
+      tags:
+      - dawa:vejnavne
+      summary: Get Vejnavn
+      operationId: get_vejnavn_vejnavne__id__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Vejnavn Vejnavne  Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /navngivneveje:
+    get:
+      tags:
+      - dawa:navngivneveje
+      summary: List Navngivneveje
+      operationId: list_navngivneveje_navngivneveje_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: navn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Navn
+      - name: side
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Side
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 100
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Navngivneveje Navngivneveje Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /navngivneveje/{id}:
+    get:
+      tags:
+      - dawa:navngivneveje
+      summary: Get Navngivenvej
+      operationId: get_navngivenvej_navngivneveje__id__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Navngivenvej Navngivneveje  Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /vejstykker:
+    get:
+      tags:
+      - dawa:vejstykker
+      summary: List Vejstykker
+      operationId: list_vejstykker_vejstykker_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: navn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Navn
+      - name: kommunekode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Kommunekode
+      - name: kode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: vejkode
+          title: Kode
+        description: vejkode
+      - name: side
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Side
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 100
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Vejstykker Vejstykker Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /vejstykker/autocomplete:
+    get:
+      tags:
+      - dawa:vejstykker
+      summary: Autocomplete Vejstykker
+      operationId: autocomplete_vejstykker_vejstykker_autocomplete_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: kommunekode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Kommunekode
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 20
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Autocomplete Vejstykker Vejstykker Autocomplete Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /vejstykker/{kommunekode}/{kode}:
+    get:
+      tags:
+      - dawa:vejstykker
+      summary: Get Vejstykke
+      operationId: get_vejstykke_vejstykker__kommunekode___kode__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: kommunekode
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Kommunekode
+      - name: kode
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Kode
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Vejstykke Vejstykker  Kommunekode   Kode  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /retskredse:
+    get:
+      tags:
+      - dawa:dagi
+      summary: List Retskredse
+      operationId: list_retskredse_retskredse_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: navn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Navn
+      - name: _model
+        in: query
+        required: false
+        schema:
+          title: ' Model'
+      - name: _path
+        in: query
+        required: false
+        schema:
+          default: retskredse
+          title: ' Path'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Retskredse Retskredse Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /retskredse/{kode}:
+    get:
+      tags:
+      - dawa:dagi
+      summary: Get Retskredse
+      operationId: get_retskredse_retskredse__kode__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: kode
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Kode
+      - name: _model
+        in: query
+        required: false
+        schema:
+          title: ' Model'
+      - name: _path
+        in: query
+        required: false
+        schema:
+          default: retskredse
+          title: ' Path'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Retskredse Retskredse  Kode  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /politikredse:
+    get:
+      tags:
+      - dawa:dagi
+      summary: List Politikredse
+      operationId: list_politikredse_politikredse_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: navn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Navn
+      - name: _model
+        in: query
+        required: false
+        schema:
+          title: ' Model'
+      - name: _path
+        in: query
+        required: false
+        schema:
+          default: politikredse
+          title: ' Path'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Politikredse Politikredse Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /politikredse/{kode}:
+    get:
+      tags:
+      - dawa:dagi
+      summary: Get Politikredse
+      operationId: get_politikredse_politikredse__kode__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: kode
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Kode
+      - name: _model
+        in: query
+        required: false
+        schema:
+          title: ' Model'
+      - name: _path
+        in: query
+        required: false
+        schema:
+          default: politikredse
+          title: ' Path'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Politikredse Politikredse  Kode  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /opstillingskredse:
+    get:
+      tags:
+      - dawa:dagi
+      summary: List Opstillingskredse
+      operationId: list_opstillingskredse_opstillingskredse_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: navn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Navn
+      - name: _model
+        in: query
+        required: false
+        schema:
+          title: ' Model'
+      - name: _path
+        in: query
+        required: false
+        schema:
+          default: opstillingskredse
+          title: ' Path'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Opstillingskredse Opstillingskredse Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /opstillingskredse/{kode}:
+    get:
+      tags:
+      - dawa:dagi
+      summary: Get Opstillingskredse
+      operationId: get_opstillingskredse_opstillingskredse__kode__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: kode
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Kode
+      - name: _model
+        in: query
+        required: false
+        schema:
+          title: ' Model'
+      - name: _path
+        in: query
+        required: false
+        schema:
+          default: opstillingskredse
+          title: ' Path'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Opstillingskredse Opstillingskredse  Kode  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /landsdele:
+    get:
+      tags:
+      - dawa:dagi
+      summary: List Landsdele
+      operationId: list_landsdele_landsdele_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: _m
+        in: query
+        required: false
+        schema:
+          title: ' M'
+      - name: _p
+        in: query
+        required: false
+        schema:
+          default: landsdele
+          title: ' P'
+      - name: _k
+        in: query
+        required: false
+        schema:
+          default: nuts3
+          title: ' K'
+      - name: _ok
+        in: query
+        required: false
+        schema:
+          default: nuts3
+          title: ' Ok'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /landsdele/{key}:
+    get:
+      tags:
+      - dawa:dagi
+      summary: Get Landsdele
+      operationId: get_landsdele_landsdele__key__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Key
+      - name: _m
+        in: query
+        required: false
+        schema:
+          title: ' M'
+      - name: _p
+        in: query
+        required: false
+        schema:
+          default: landsdele
+          title: ' P'
+      - name: _k
+        in: query
+        required: false
+        schema:
+          default: nuts3
+          title: ' K'
+      - name: _ok
+        in: query
+        required: false
+        schema:
+          default: nuts3
+          title: ' Ok'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /storkredse:
+    get:
+      tags:
+      - dawa:dagi
+      summary: List Storkredse
+      operationId: list_storkredse_storkredse_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: _m
+        in: query
+        required: false
+        schema:
+          title: ' M'
+      - name: _p
+        in: query
+        required: false
+        schema:
+          default: storkredse
+          title: ' P'
+      - name: _k
+        in: query
+        required: false
+        schema:
+          default: nummer
+          title: ' K'
+      - name: _ok
+        in: query
+        required: false
+        schema:
+          default: nummer
+          title: ' Ok'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /storkredse/{key}:
+    get:
+      tags:
+      - dawa:dagi
+      summary: Get Storkredse
+      operationId: get_storkredse_storkredse__key__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Key
+      - name: _m
+        in: query
+        required: false
+        schema:
+          title: ' M'
+      - name: _p
+        in: query
+        required: false
+        schema:
+          default: storkredse
+          title: ' P'
+      - name: _k
+        in: query
+        required: false
+        schema:
+          default: nummer
+          title: ' K'
+      - name: _ok
+        in: query
+        required: false
+        schema:
+          default: nummer
+          title: ' Ok'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /valglandsdele:
+    get:
+      tags:
+      - dawa:dagi
+      summary: List Valglandsdele
+      operationId: list_valglandsdele_valglandsdele_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: _m
+        in: query
+        required: false
+        schema:
+          title: ' M'
+      - name: _p
+        in: query
+        required: false
+        schema:
+          default: valglandsdele
+          title: ' P'
+      - name: _k
+        in: query
+        required: false
+        schema:
+          default: bogstav
+          title: ' K'
+      - name: _ok
+        in: query
+        required: false
+        schema:
+          default: bogstav
+          title: ' Ok'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /valglandsdele/{key}:
+    get:
+      tags:
+      - dawa:dagi
+      summary: Get Valglandsdele
+      operationId: get_valglandsdele_valglandsdele__key__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Key
+      - name: _m
+        in: query
+        required: false
+        schema:
+          title: ' M'
+      - name: _p
+        in: query
+        required: false
+        schema:
+          default: valglandsdele
+          title: ' P'
+      - name: _k
+        in: query
+        required: false
+        schema:
+          default: bogstav
+          title: ' K'
+      - name: _ok
+        in: query
+        required: false
+        schema:
+          default: bogstav
+          title: ' Ok'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /afstemningsomraader:
+    get:
+      tags:
+      - dawa:dagi
+      summary: List Afstemningsomraader
+      operationId: list_afstemningsomraader_afstemningsomraader_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: kommunekode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Kommunekode
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Afstemningsomraader Afstemningsomraader Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /afstemningsomraader/{kommunekode}/{nummer}:
+    get:
+      tags:
+      - dawa:dagi
+      summary: Get Afstemningsomraade
+      operationId: get_afstemningsomraade_afstemningsomraader__kommunekode___nummer__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: kommunekode
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Kommunekode
+      - name: nummer
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Nummer
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Afstemningsomraade Afstemningsomraader  Kommunekode   Nummer  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /supplerendebynavne2:
+    get:
+      tags:
+      - dawa:dagi
+      summary: List Supplerendebynavne2
+      operationId: list_supplerendebynavne2_supplerendebynavne2_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: navn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Navn
+      - name: side
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Side
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 100
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Supplerendebynavne2 Supplerendebynavne2 Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /supplerendebynavne:
+    get:
+      tags:
+      - dawa:dagi
+      summary: List Supplerendebynavne
+      description: Deprecated v1 path — same data, native (was proxied).
+      operationId: list_supplerendebynavne_supplerendebynavne_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: navn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Navn
+      - name: side
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Side
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 100
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Supplerendebynavne Supplerendebynavne Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /regioner:
+    get:
+      tags:
+      - dawa:dagi
+      summary: List Regioner
+      operationId: list_regioner_regioner_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: navn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Navn
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Regioner Regioner Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /regioner/{kode}:
+    get:
+      tags:
+      - dawa:dagi
+      summary: Get Region
+      operationId: get_region_regioner__kode__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: kode
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Kode
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Region Regioner  Kode  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /sogne:
+    get:
+      tags:
+      - dawa:dagi
+      summary: List Sogne
+      operationId: list_sogne_sogne_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: navn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Navn
+      - name: side
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Side
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 100
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Sogne Sogne Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /sogne/{kode}:
+    get:
+      tags:
+      - dawa:dagi
+      summary: Get Sogn
+      operationId: get_sogn_sogne__kode__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: kode
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Kode
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Sogn Sogne  Kode  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /ejerlav/autocomplete:
+    get:
+      tags:
+      - dawa:matrikel
+      summary: Autocomplete Ejerlav
+      operationId: autocomplete_ejerlav_ejerlav_autocomplete_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 20
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Autocomplete Ejerlav Ejerlav Autocomplete Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /ejerlav:
+    get:
+      tags:
+      - dawa:matrikel
+      summary: List Ejerlav
+      operationId: list_ejerlav_ejerlav_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: navn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Navn
+      - name: kode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Kode
+      - name: side
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Side
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 100
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Ejerlav Ejerlav Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /ejerlav/{kode}:
+    get:
+      tags:
+      - dawa:matrikel
+      summary: Get Ejerlav
+      operationId: get_ejerlav_ejerlav__kode__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: kode
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Kode
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Ejerlav Ejerlav  Kode  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /jordstykker:
+    get:
+      tags:
+      - dawa:matrikel
+      summary: List Jordstykker
+      operationId: list_jordstykker_jordstykker_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: ejerlavkode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Ejerlavkode
+      - name: matrikelnr
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Matrikelnr
+      - name: side
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Side
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 100
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Jordstykker Jordstykker Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /jordstykker/{ejerlavkode}/{matrikelnr}:
+    get:
+      tags:
+      - dawa:matrikel
+      summary: Get Jordstykke
+      operationId: get_jordstykke_jordstykker__ejerlavkode___matrikelnr__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: ejerlavkode
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Ejerlavkode
+      - name: matrikelnr
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Matrikelnr
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Jordstykke Jordstykker  Ejerlavkode   Matrikelnr  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /steder:
+    get:
+      tags:
+      - dawa:stednavne
+      summary: List Steder
+      operationId: list_steder_steder_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: hovedtype
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Hovedtype
+      - name: side
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Side
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 100
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Steder Steder Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /steder/{id}:
+    get:
+      tags:
+      - dawa:stednavne
+      summary: Get Sted
+      operationId: get_sted_steder__id__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Sted Steder  Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /stednavne:
+    get:
+      tags:
+      - dawa:stednavne
+      summary: List Stednavne
+      operationId: list_stednavne_stednavne_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: side
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Side
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 100
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Stednavne Stednavne Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /menighedsraadsafstemningsomraader:
+    get:
+      tags:
+      - dawa:stednavne
+      summary: List Menighedsraad
+      operationId: list_menighedsraad_menighedsraadsafstemningsomraader_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: kommunekode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Kommunekode
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Menighedsraad Menighedsraadsafstemningsomraader
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /menighedsraadsafstemningsomraader/{kommunekode}/{nummer}:
+    get:
+      tags:
+      - dawa:stednavne
+      summary: Get Menighedsraad
+      operationId: get_menighedsraad_menighedsraadsafstemningsomraader__kommunekode___nummer__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: kommunekode
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Kommunekode
+      - name: nummer
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Nummer
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Menighedsraad Menighedsraadsafstemningsomraader  Kommunekode   Nummer  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /matrikelnumre:
+    get:
+      tags:
+      - dawa:stednavne
+      summary: List Matrikelnumre
+      description: Derived from the native jordstykke table (distinct ejerlavkode+matrikelnr).
+      operationId: list_matrikelnumre_matrikelnumre_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: ejerlavkode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Ejerlavkode
+      - name: matrikelnr
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Matrikelnr
+      - name: side
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Side
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 100
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Matrikelnumre Matrikelnumre Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /adgangsadresser:
+    get:
+      tags:
+      - dawa:adgangsadresser
+      summary: List Adgangsadresser
+      operationId: list_adgangsadresser_adgangsadresser_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: vejnavn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Vejnavn
+      - name: husnr
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Husnr
+      - name: postnr
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 'Flerværdi: 1550|1551'
+          title: Postnr
+        description: 'Flerværdi: 1550|1551'
+      - name: kommunekode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 'Flerværdi: 0101|0147'
+          title: Kommunekode
+        description: 'Flerværdi: 0101|0147'
+      - name: vejkode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Vejkode
+      - name: sognekode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sognekode
+      - name: regionskode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Regionskode
+      - name: retskredskode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Retskredskode
+      - name: politikredskode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Politikredskode
+      - name: opstillingskredskode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Opstillingskredskode
+      - name: nøjagtighed
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Nøjagtighed
+      - name: medtagnedlagte
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Medtagnedlagte
+      - name: kvh
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 12-tegns KVH-nøgle (DAWA)
+          title: Kvh
+        description: 12-tegns KVH-nøgle (DAWA)
+      - name: cirkel
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 'Adresser inden for en cirkel: ''lng,lat,radius_m'' (DAWA-kompatibel)'
+          title: Cirkel
+        description: 'Adresser inden for en cirkel: ''lng,lat,radius_m'' (DAWA-kompatibel)'
+      - name: polygon
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 'Adresser inden for et polygon: GeoJSON [[[lon,lat],…]]'
+          title: Polygon
+        description: 'Adresser inden for et polygon: GeoJSON [[[lon,lat],…]]'
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Status
+      - name: format
+        in: query
+        required: false
+        schema:
+          enum:
+          - json
+          - geojson
+          - ndjson
+          type: string
+          default: json
+          title: Format
+      - name: struktur
+        in: query
+        required: false
+        schema:
+          enum:
+          - mini
+          - nestet
+          - flad
+          type: string
+          default: nestet
+          title: Struktur
+      - name: srid
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 4326
+          title: Srid
+      - name: side
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Side
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 100
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /adgangsadresser/reverse:
+    get:
+      tags:
+      - dawa:adgangsadresser
+      summary: Reverse Geocode
+      description: Знаходить найближчу adgangsadresse до точки (x, y).
+      operationId: reverse_geocode_adgangsadresser_reverse_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: x
+        in: query
+        required: true
+        schema:
+          type: number
+          description: Longitude (4326) або East (25832)
+          title: X
+        description: Longitude (4326) або East (25832)
+      - name: y
+        in: query
+        required: true
+        schema:
+          type: number
+          description: Latitude (4326) або North (25832)
+          title: Y
+        description: Latitude (4326) або North (25832)
+      - name: srid
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 4326
+          title: Srid
+      - name: struktur
+        in: query
+        required: false
+        schema:
+          enum:
+          - mini
+          - full
+          type: string
+          default: full
+          title: Struktur
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Reverse Geocode Adgangsadresser Reverse Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /adgangsadresser/autocomplete:
+    get:
+      tags:
+      - dawa:adgangsadresser
+      summary: Autocomplete Adgangsadresser
+      description: DAWA per-resource autocomplete → [{tekst, adgangsadresse:{…}}].
+      operationId: autocomplete_adgangsadresser_adgangsadresser_autocomplete_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 20
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Autocomplete Adgangsadresser Adgangsadresser Autocomplete
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /adgangsadresser/{id}:
+    get:
+      tags:
+      - dawa:adgangsadresser
+      summary: Get Adgangsadresse
+      operationId: get_adgangsadresse_adgangsadresser__id__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      - name: srid
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 4326
+          title: Srid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Adgangsadresse Adgangsadresser  Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /adresser:
+    get:
+      tags:
+      - dawa:adresser
+      summary: Søg adresser (DAWA-kompatibel)
+      description: 'Søger danske adresser. 1:1 DAWA-kompatibel.
+
+
+        Returnerer JSON (struktur=nestet) som standard. `?format=csv|geojson|ndjson`,
+
+        `?struktur=flad|mini` understøttes.'
+      operationId: list_adresser_adresser_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Fritekstsøgning på vejnavn
+          title: Q
+        description: Fritekstsøgning på vejnavn
+      - name: vejnavn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Vejnavn
+      - name: husnr
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Husnr
+      - name: etage
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Etage
+      - name: dør
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Dør
+      - name: postnr
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Postnr
+      - name: kommunekode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Kommunekode
+      - name: kvhx
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 19-tegns KVHX-nøgle (DAWA)
+          title: Kvhx
+        description: 19-tegns KVHX-nøgle (DAWA)
+      - name: cirkel
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 'Adresser inden for en cirkel: ''lng,lat,radius_m'' (DAWA-kompatibel)'
+          title: Cirkel
+        description: 'Adresser inden for en cirkel: ''lng,lat,radius_m'' (DAWA-kompatibel)'
+      - name: polygon
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 'Adresser inden for et polygon: GeoJSON [[[lon,lat],…]]'
+          title: Polygon
+        description: 'Adresser inden for et polygon: GeoJSON [[[lon,lat],…]]'
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          description: 1=aktiv (default), 2=nedlagt
+          title: Status
+        description: 1=aktiv (default), 2=nedlagt
+      - name: srid
+        in: query
+        required: false
+        schema:
+          type: integer
+          description: 4326=WGS84, 25832=ETRS89/UTM32
+          default: 4326
+          title: Srid
+        description: 4326=WGS84, 25832=ETRS89/UTM32
+      - name: format
+        in: query
+        required: false
+        schema:
+          enum:
+          - json
+          - csv
+          - geojson
+          - ndjson
+          type: string
+          description: Response format
+          default: json
+          title: Format
+        description: Response format
+      - name: struktur
+        in: query
+        required: false
+        schema:
+          enum:
+          - mini
+          - nestet
+          - flad
+          type: string
+          default: nestet
+          title: Struktur
+      - name: side
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Side
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 100
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /adresser/reverse:
+    get:
+      tags:
+      - dawa:adresser
+      summary: Reverse geocode → adresse
+      description: Find nærmeste fulde adresse til en koordinat. DAWA-kompatibel.
+      operationId: adresser_reverse_adresser_reverse_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: x
+        in: query
+        required: true
+        schema:
+          type: number
+          description: Longitude (4326) / East (25832)
+          title: X
+        description: Longitude (4326) / East (25832)
+      - name: y
+        in: query
+        required: true
+        schema:
+          type: number
+          description: Latitude (4326) / North (25832)
+          title: Y
+        description: Latitude (4326) / North (25832)
+      - name: srid
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 4326
+          title: Srid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Adresser Reverse Adresser Reverse Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /adresser/autocomplete:
+    get:
+      tags:
+      - dawa:adresser
+      summary: Autocomplete Adresser
+      description: DAWA per-resource autocomplete → [{tekst, adresse:{…}}].
+      operationId: autocomplete_adresser_adresser_autocomplete_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: per_side
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 20
+          title: Per Side
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Autocomplete Adresser Adresser Autocomplete Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /adresser/{id}:
+    get:
+      tags:
+      - dawa:adresser
+      summary: Hent én adresse
+      operationId: get_adresse_adresser__id__get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      - name: srid
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 4326
+          title: Srid
+      - name: format
+        in: query
+        required: false
+        schema:
+          enum:
+          - json
+          - csv
+          type: string
+          default: json
+          title: Format
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /datavask/adgangsadresser:
+    post:
+      tags:
+      - dawa:datavask
+      summary: Datavask Adgangsadresser
+      description: Очищення/валідація adgangsadresse. Повертає top матч + кутегорію.
+      operationId: datavask_adgangsadresser_datavask_adgangsadresser_post
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: struktur
+        in: query
+        required: false
+        schema:
+          enum:
+          - mini
+          - full
+          type: string
+          default: mini
+          title: Struktur
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaskInput'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Datavask Adgangsadresser Datavask Adgangsadresser
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - dawa:datavask
+      summary: Datavask af adgangsadresse (DAWA-kompatibel GET)
+      description: 'GET-version af datavask. Tager parametre direkte i query og kalder
+        POST-handleren.
+
+
+        Hvis `betegnelse` er udfyldt parser vi den til vejnavn/husnr/postnr (best-effort).'
+      operationId: datavask_adgangsadresser_get_datavask_adgangsadresser_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: vejnavn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Vejnavn
+      - name: husnr
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Husnr
+      - name: postnr
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Postnr
+      - name: supplerendebynavn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Supplerendebynavn
+      - name: betegnelse
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Hel adresse-streng, parses
+          title: Betegnelse
+        description: Hel adresse-streng, parses
+      - name: struktur
+        in: query
+        required: false
+        schema:
+          enum:
+          - mini
+          - full
+          type: string
+          default: mini
+          title: Struktur
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Datavask Adgangsadresser Get Datavask Adgangsadresser
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /datavask/adresser:
+    post:
+      tags:
+      - dawa:datavask
+      summary: Datavask Adresser
+      description: Datavask на повну адресу (з etage/dør).
+      operationId: datavask_adresser_datavask_adresser_post
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: struktur
+        in: query
+        required: false
+        schema:
+          enum:
+          - mini
+          - full
+          type: string
+          default: mini
+          title: Struktur
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaskInput'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Datavask Adresser Datavask Adresser Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - dawa:datavask
+      summary: Datavask af adresse (DAWA-kompatibel GET)
+      description: GET-version af datavask for fulde adresser.
+      operationId: datavask_adresser_get_datavask_adresser_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: vejnavn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Vejnavn
+      - name: husnr
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Husnr
+      - name: etage
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Etage
+      - name: dør
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Dør
+      - name: postnr
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Postnr
+      - name: supplerendebynavn
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Supplerendebynavn
+      - name: betegnelse
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Betegnelse
+      - name: struktur
+        in: query
+        required: false
+        schema:
+          enum:
+          - mini
+          - full
+          type: string
+          default: mini
+          title: Struktur
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Datavask Adresser Get Datavask Adresser Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /replikering/senesteSekvensnummer:
+    get:
+      tags:
+      - dawa:replikering
+      summary: Latest replication sequence number
+      description: 'Highest sekvensnummer we''ve ingested across all entities.
+
+
+        Native + instant — this is the endpoint replication clients poll
+
+        constantly to decide whether to fetch new events.'
+      operationId: seneste_sekvensnummer_replikering_senesteSekvensnummer_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Seneste Sekvensnummer Replikering Senestesekvensnummer
+                  Get
+  /replikering/datamodel:
+    get:
+      tags:
+      - dawa:replikering
+      summary: Machine-readable data model of replicable entities
+      description: 'DAWA-style datamodel: each entity → {key, attributes:[{name,type,nullable}]}.'
+      operationId: datamodel_replikering_datamodel_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Datamodel Replikering Datamodel Get
+  /replikering/senestetransaktion:
+    get:
+      tags:
+      - dawa:replikering
+      summary: Latest transaction (modern replication)
+      operationId: senestetransaktion_replikering_senestetransaktion_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Senestetransaktion Replikering Senestetransaktion
+                  Get
+  /replikering/transaktioner:
+    get:
+      tags:
+      - dawa:replikering
+      summary: Transaction metadata (modern replication)
+      operationId: transaktioner_replikering_transaktioner_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Transaktioner Replikering Transaktioner Get
+  /replikering/udtraek:
+    get:
+      tags:
+      - dawa:replikering
+      summary: Full extract of an entity (NDJSON stream)
+      description: 'Native, streamed full extract of an entity as NDJSON. DAWA''s
+        modern
+
+        flat form: /replikering/udtraek?entitet=postnummer.'
+      operationId: udtraek_native_replikering_udtraek_get
+      parameters:
+      - name: entitet
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Entitet
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /replikering/{entitet}/haendelser:
+    get:
+      tags:
+      - dawa:replikering
+      summary: Change events for an entity since a seqno
+      description: 'Event stream for an entity. Requires an API key (Enterprise feature).
+
+
+        Proxied to DAWA''s authoritative event log until cutover; same JSON shape.'
+      operationId: haendelser_replikering__entitet__haendelser_get
+      parameters:
+      - name: entitet
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Entitet
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /replikering/{entitet}:
+    get:
+      tags:
+      - dawa:replikering
+      summary: Full snapshot (udtraek) of an entity
+      description: 'Full data snapshot for an entity. Requires an API key.
+
+
+        Proxied to DAWA upstream; identical contract.'
+      operationId: udtraek_replikering__entitet__get
+      parameters:
+      - name: entitet
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Entitet
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /healthz:
+    get:
+      tags:
+      - health
+      summary: Healthz
+      operationId: healthz_healthz_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /readyz:
+    get:
+      tags:
+      - health
+      summary: Readyz
+      operationId: readyz_readyz_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /version:
+    get:
+      tags:
+      - health
+      summary: Version
+      description: 'Public build/config probe. Only non-sensitive values (tier limits
+        + prices
+
+        are already public on the pricing page); never secrets.'
+      operationId: version_version_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/healthz:
+    get:
+      tags:
+      - health
+      summary: Healthz
+      operationId: healthz_api_v1_healthz_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/readyz:
+    get:
+      tags:
+      - health
+      summary: Readyz
+      operationId: readyz_api_v1_readyz_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/version:
+    get:
+      tags:
+      - health
+      summary: Version
+      description: 'Public build/config probe. Only non-sensitive values (tier limits
+        + prices
+
+        are already public on the pricing page); never secrets.'
+      operationId: version_api_v1_version_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/auth/signup:
+    post:
+      tags:
+      - auth
+      summary: Signup
+      operationId: signup_api_v1_auth_signup_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupBody'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/login:
+    post:
+      tags:
+      - auth
+      summary: Login
+      operationId: login_api_v1_auth_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginBody'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/me:
+    get:
+      tags:
+      - auth
+      summary: Me
+      operationId: me_api_v1_auth_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Me Api V1 Auth Me Get
+      security:
+      - HTTPBearer: []
+  /api/v1/auth/logout:
+    post:
+      tags:
+      - auth
+      summary: Logout
+      description: JWT stateless — клієнт сам видаляє token. Для blacklist можна додати
+        Redis.
+      operationId: logout_api_v1_auth_logout_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Logout Api V1 Auth Logout Post
+  /api/v1/auth/magic:
+    post:
+      tags:
+      - auth
+      summary: Request Magic
+      description: Запит magic-link на email. Якщо юзера нема — створюємо.
+      operationId: request_magic_api_v1_auth_magic_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MagicRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Request Magic Api V1 Auth Magic Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/otp/signup:
+    post:
+      tags:
+      - auth
+      summary: Otp Signup
+      description: 'Stage 1 of signup: stash credentials, email a 6-digit code.
+
+
+        No user row is created until the code is verified — this prevents the table
+
+        from filling with abandoned half-signups and lets people retry with the
+
+        same email.'
+      operationId: otp_signup_api_v1_auth_otp_signup_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpSignupBody'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Otp Signup Api V1 Auth Otp Signup Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/otp/verify:
+    post:
+      tags:
+      - auth
+      summary: Otp Verify
+      description: 'Stage 2 of signup: consume code, create user, return JWT.'
+      operationId: otp_verify_api_v1_auth_otp_verify_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpVerifyBody'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/otp/forgot:
+    post:
+      tags:
+      - auth
+      summary: Otp Forgot
+      description: 'Request a password-reset code. Always returns 200 — we don''t
+        leak
+
+        whether an email exists in our system (prevents user enumeration).'
+      operationId: otp_forgot_api_v1_auth_otp_forgot_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpForgotBody'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Otp Forgot Api V1 Auth Otp Forgot Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/otp/reset:
+    post:
+      tags:
+      - auth
+      summary: Otp Reset
+      description: Verify reset code, set new password, return JWT (auto-login).
+      operationId: otp_reset_api_v1_auth_otp_reset_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpResetBody'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/otp/resend:
+    post:
+      tags:
+      - auth
+      summary: Otp Resend
+      description: 'Re-issue a code. Rate-limit: max 1 resend per 60 sec per email+purpose.'
+      operationId: otp_resend_api_v1_auth_otp_resend_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpResendBody'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Otp Resend Api V1 Auth Otp Resend Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/magic/{token}:
+    get:
+      tags:
+      - auth
+      summary: Confirm Magic
+      operationId: confirm_magic_api_v1_auth_magic__token__get
+      parameters:
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Token
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/keys:
+    get:
+      tags:
+      - keys
+      summary: List Keys
+      operationId: list_keys_api_v1_keys_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response List Keys Api V1 Keys Get
+      security:
+      - HTTPBearer: []
+    post:
+      tags:
+      - keys
+      summary: Create Key
+      description: Створити ключ. Plaintext key повертається ТІЛЬКИ ЗАРАЗ і ніколи
+        знов.
+      operationId: create_key_api_v1_keys_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateKeyBody'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Create Key Api V1 Keys Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/keys/{key_id}:
+    delete:
+      tags:
+      - keys
+      summary: Revoke Key
+      operationId: revoke_key_api_v1_keys__key_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: key_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Key Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Revoke Key Api V1 Keys  Key Id  Delete
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/billing/checkout:
+    post:
+      tags:
+      - billing
+      summary: Create Checkout
+      description: Створити Stripe Checkout Session. Якщо у юзера ще немає customer_id
+        — створюємо.
+      operationId: create_checkout_api_v1_billing_checkout_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Create Checkout Api V1 Billing Checkout Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/billing/portal:
+    post:
+      tags:
+      - billing
+      summary: Create Portal
+      description: Stripe Customer Portal — користувач керує підпискою, методами оплати,
+        інвойсами.
+      operationId: create_portal_api_v1_billing_portal_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Create Portal Api V1 Billing Portal Post
+      security:
+      - HTTPBearer: []
+  /api/v1/billing/status:
+    get:
+      tags:
+      - billing
+      summary: Billing Status
+      operationId: billing_status_api_v1_billing_status_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Billing Status Api V1 Billing Status Get
+      security:
+      - HTTPBearer: []
+  /api/v1/billing/webhook/stripe:
+    post:
+      tags:
+      - billing
+      summary: Stripe Webhook
+      description: "Stripe webhook. Підтримує ОБИДВА формати payload:\n\n1. **Snapshot**\
+        \ (`Payload style: Snapshot`, API v2026-03-25.dahlia):\n   Повний event object\
+        \ з усіма даними. `event.type` = \"customer.subscription.created\" etc.\n\n\
+        2. **Thin payload** (`Payload style: Thin`, Unversioned):\n   Тільки `event.type`\
+        \ + `event.related_object.id`. Треба fetch повного об'єкта через API.\n\n\
+        Обидва — одна функція. Розрізняємо по `payload_style` у тілі."
+      operationId: stripe_webhook_api_v1_billing_webhook_stripe_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Stripe Webhook Api V1 Billing Webhook Stripe Post
+  /api/v1/enrich/adresser/{id}/dagi:
+    get:
+      tags:
+      - enrich
+      summary: Dagi Tags
+      description: 'Все 8 адміністративних рівнів за one call.
+
+
+        Equivalent to Smarty''s FIPS/congressional district feature but free.'
+      operationId: dagi_tags_api_v1_enrich_adresser__id__dagi_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Adgangsadresse UUID
+          title: Id
+        description: Adgangsadresse UUID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Dagi Tags Api V1 Enrich Adresser  Id  Dagi Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/enrich/adresser/{id}/bbr:
+    get:
+      tags:
+      - enrich
+      summary: Bbr Data
+      description: 'BBR building data — construction year, area, floors, usage, materials.
+
+
+        Serves real data from the `bygning` table once the BBR ETL has run
+
+        (etl.bbr_etl). Until then returns the shape with _status=needs_bbr_etl.'
+      operationId: bbr_data_api_v1_enrich_adresser__id__bbr_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Bbr Data Api V1 Enrich Adresser  Id  Bbr Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/enrich/adresser/{id}/enhed:
+    get:
+      tags:
+      - enrich
+      summary: Enhed Data
+      description: '🏠 BBR unit/dwelling detail — rooms, kitchen/bath/toilet, area,
+        heating,
+
+        housing & rental type per dwelling (BBR_Enhed). The most-requested BBR layer
+
+        for home-valuation, rental and due-diligence.
+
+
+        Accepts an **adgangsadresse** id (→ all units at that entrance) OR a unit
+
+        **adresse** id (→ that single dwelling). Floor/door labels come from DAR.
+
+        Serves the `enhed` table; returns _status=needs_bbr_enhed_etl until
+
+        etl.bbr_enhed_etl has run.'
+      operationId: enhed_data_api_v1_enrich_adresser__id__enhed_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Enhed Data Api V1 Enrich Adresser  Id  Enhed Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/enrich/adresser/{id}/ejendom:
+    get:
+      tags:
+      - enrich
+      summary: Ejendom Data
+      description: '🏠 Ejendomsdata-hub — EVERYTHING about the property at this address
+        in one
+
+        call: BFE (EBR), cadastre/SamletFastEjendom (Matriklen), official valuation
+
+        (Ejendomsvurdering), and the BBR buildings. Joins four Datafordeler registers
+
+        live (cached 24h). Accepts an adgangsadresse OR adresse id.'
+      operationId: ejendom_data_api_v1_enrich_adresser__id__ejendom_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Ejendom Data Api V1 Enrich Adresser  Id  Ejendom Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/enrich/adresser/{id}/virksomheder:
+    get:
+      tags:
+      - enrich
+      summary: Companies At Address
+      description: 'Companies at this address → soge.dk (the CVR/vehicle product),
+        which has
+
+        the full company + accounts + history + vehicle data.
+
+
+        We do NOT serve a native CVR-at-address list here: CVR on Datafordeler keys
+
+        on DAR-1.0 UUIDs while our address ids are the legacy DAWA UUIDs, and CVR''s
+
+        GraphQL filter can''t take kommune/vej/postnr — so we funnel to soge, which
+
+        already does this. (The verified CVR client lives in app/integrations/cvr.py
+
+        for when a DAR-1.0 id crosswalk is added.)'
+      operationId: companies_at_address_api_v1_enrich_adresser__id__virksomheder_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Companies At Address Api V1 Enrich Adresser  Id  Virksomheder
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/enrich/adresser/{id}/climate:
+    get:
+      tags:
+      - enrich
+      summary: Climate Risk
+      description: "Coastal-flood / storm-surge risk — real data, no stub.\n\nCombines\
+        \ two open sources, both live:\n  • DHM terrain elevation (Datafordeler DHM\
+        \ WCS, our single API key) — how\n    high the ground sits, in m DVR90 ≈ m\
+        \ above present mean sea level.\n  • DMI Klimaatlas (open ArcGIS FeatureServer,\
+        \ no key) — projected sea-level\n    rise + N-year storm-surge height for\
+        \ the nearest coastal stretch.\nThe honest indicator is the *margin*: terrain\
+        \ elevation minus the projected\n100-year storm-surge height. Negative margin\
+        \ ⇒ exposed. Inland addresses far\nfrom any coast return level=\"minimal\"\
+        . A unique DK value-add no global\naddress API offers."
+      operationId: climate_risk_api_v1_enrich_adresser__id__climate_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Climate Risk Api V1 Enrich Adresser  Id  Climate Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/enrich/adresser/{id}/property:
+    get:
+      tags:
+      - enrich
+      summary: Property Valuation
+      description: 'Tax-assessed property valuation (Vurderingsstyrelsen / Ejendomsvurdering).
+
+
+        Real data — joins EBR→BFE→VUR live via Datafordeler (cached 24h), the same
+
+        source /ejendom uses. Returns the latest valuation across the address''s
+
+        properties.'
+      operationId: property_valuation_api_v1_enrich_adresser__id__property_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Property Valuation Api V1 Enrich Adresser  Id  Property
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/enrich/adresser/{id}/installations:
+    get:
+      tags:
+      - enrich
+      summary: Technical Installations
+      description: 'BBR technical installations at the address: solar (solceller/solvarme),
+        oil
+
+        furnaces, oil tanks, wind turbines, etc. — live from Datafordeler BBR_TekniskAnlaeg
+
+        (cached 24h). NB the building''s primary HEATING (incl. heat pumps / district
+
+        heating) is a BBR_Bygning code — see /api/v1/enrich/adresser/{id}/bbr.'
+      operationId: technical_installations_api_v1_enrich_adresser__id__installations_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Technical Installations Api V1 Enrich Adresser  Id  Installations
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/enrich/adresser/{id}/all:
+    get:
+      tags:
+      - enrich
+      summary: All Enrichment
+      description: 'Composite call — DAGI + BBR + units + Companies + Climate + Valuation
+        +
+
+        Ejendom (zoning/energy-label/cadastre) + Installations in one. The complete
+
+        "everything we hold about this address" bundle (ideal for a property/agency
+        view).
+
+
+        The enrichments are independent, so they run concurrently. An AsyncSession
+
+        is NOT safe for concurrent use, so each gathered task gets its own session
+
+        (the injected `db` is only used to bound the request lifecycle).'
+      operationId: all_enrichment_api_v1_enrich_adresser__id__all_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response All Enrichment Api V1 Enrich Adresser  Id  All Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/enrich/distance:
+    get:
+      tags:
+      - enrich
+      summary: Distance Between Addresses
+      description: 'Straight-line distance + bearing between two DAWA addresses.
+
+
+        Useful for delivery zone checks, last-mile costing, postnummer-radius queries
+
+        without spinning up a routing engine.'
+      operationId: distance_between_addresses_api_v1_enrich_distance_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: from
+        in: query
+        required: false
+        schema:
+          type: string
+          description: Source adgangsadresse UUID
+          default: ''
+          title: From
+        description: Source adgangsadresse UUID
+      - name: to
+        in: query
+        required: false
+        schema:
+          type: string
+          description: Destination adgangsadresse UUID
+          default: ''
+          title: To
+        description: Destination adgangsadresse UUID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Distance Between Addresses Api V1 Enrich Distance
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/enrich/quality/score:
+    post:
+      tags:
+      - enrich
+      summary: Quality Score
+      description: 'Score the completeness + plausibility of an address record.
+
+
+        Useful for data-cleansing pipelines that need a numeric confidence
+
+        before triggering a more expensive datavask call. 0 = unusable, 100 = perfect.'
+      operationId: quality_score_api_v1_enrich_quality_score_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QualityInput'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Quality Score Api V1 Enrich Quality Score Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+  /api/v1/enrich/validate/iban:
+    post:
+      tags:
+      - enrich
+      summary: Validate Iban
+      description: IBAN mod-97 validation + DK bank code lookup.
+      operationId: validate_iban_api_v1_enrich_validate_iban_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IBANInput'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Validate Iban Api V1 Enrich Validate Iban Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/enrich/validate/cvr:
+    post:
+      tags:
+      - enrich
+      summary: Validate Cvr
+      description: Danish CVR 8-digit validation.
+      operationId: validate_cvr_api_v1_enrich_validate_cvr_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CVRInput'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Validate Cvr Api V1 Enrich Validate Cvr Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/enrich/validate/phone:
+    post:
+      tags:
+      - enrich
+      summary: Validate Phone
+      description: Danish phone normalization (+45) + line type hint.
+      operationId: validate_phone_api_v1_enrich_validate_phone_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneInput'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Validate Phone Api V1 Enrich Validate Phone Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/enrich/validate/ean:
+    post:
+      tags:
+      - enrich
+      summary: Validate Ean
+      description: EAN/GLN 13-digit mod-10 (Luhn-variant) check.
+      operationId: validate_ean_api_v1_enrich_validate_ean_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EANInput'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Validate Ean Api V1 Enrich Validate Ean Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/datavask/parse:
+    get:
+      tags:
+      - enrich:datavask
+      summary: Parse a free-text address + resolve to canonical (no AI)
+      description: 'Rule-based parse → structured components, then fuzzy-match to
+        a real
+
+        address. `kanonisk` is the best canonical hit (or null); `resultater` mirrors
+
+        the DAWA datavask shape (kategori A/B/C + score) for the top matches.'
+      operationId: datavask_parse_api_v1_datavask_parse_get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+      parameters:
+      - name: betegnelse
+        in: query
+        required: true
+        schema:
+          type: string
+          description: Hel adresse-streng, fx 'Rådhuspladsen 1, 3.tv, 1550 København
+            V'
+          title: Betegnelse
+        description: Hel adresse-streng, fx 'Rådhuspladsen 1, 3.tv, 1550 København
+          V'
+      - name: struktur
+        in: query
+        required: false
+        schema:
+          enum:
+          - mini
+          - full
+          type: string
+          default: mini
+          title: Struktur
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Datavask Parse Api V1 Datavask Parse Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/bulk/cleanse:
+    post:
+      tags:
+      - bulk
+      summary: Bulk Cleanse
+      description: Submit CSV for bulk address cleansing.
+      operationId: bulk_cleanse_api_v1_bulk_cleanse_post
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_bulk_cleanse_api_v1_bulk_cleanse_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Bulk Cleanse Api V1 Bulk Cleanse Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/bulk/jobs/{job_id}:
+    get:
+      tags:
+      - bulk
+      summary: Job Status
+      operationId: job_status_api_v1_bulk_jobs__job_id__get
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Job Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Job Status Api V1 Bulk Jobs  Job Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/bulk/jobs:
+    get:
+      tags:
+      - bulk
+      summary: List Jobs
+      description: List the caller's most recent bulk jobs (best-effort scan of Redis).
+      operationId: list_jobs_api_v1_bulk_jobs_get
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 20
+          title: Limit
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Jobs Api V1 Bulk Jobs Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/bulk/jobs/{job_id}/download:
+    get:
+      tags:
+      - bulk
+      summary: Job Download
+      operationId: job_download_api_v1_bulk_jobs__job_id__download_get
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Job Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/stats:
+    get:
+      tags:
+      - stats
+      summary: Live address-data counts
+      description: 'Public JSON: counts of addresses, postnumre, kommuner, sogne,
+        vejstykker.
+
+
+        Cached 15 min at the edge — these change at most a few times an hour.'
+      operationId: stats_api_api_v1_stats_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Stats Api Api V1 Stats Get
+  /api/v1/stats/national:
+    get:
+      tags:
+      - stats
+      summary: National Stats
+      description: 'Pre-aggregated national address/property statistics (for soge.dk
+        /stats).
+
+
+        Served from a nightly-refreshed snapshot (Redis) → fast, no per-request scan.
+
+        Anonymous works under the free tier; an enterprise X-Api-Key avoids the limit.
+
+        Distinct from `/stats` (that is per-account API-usage). A top-level `totals`
+
+        is always present. Blocks we can''t bulk-aggregate (flood_risk, energy_labels,
+
+        property_value) are `null` — see docs/TASK_national_stats_api.md.
+
+
+        Note: `?kommunekode=` (per-municipality scope) is Phase 3 and not yet served;
+
+        the param is currently ignored and the national snapshot is returned.'
+      operationId: national_stats_api_v1_stats_national_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response National Stats Api V1 Stats National Get
+      security:
+      - APIKeyHeader: []
+      - APIKeyQuery: []
+  /api/v1/stats/address-count:
+    get:
+      tags:
+      - stats
+      summary: Address Count
+      description: 'Live, filter-driven count of Danish addresses (soge.dk stats-explorer).
+
+
+        `{"count": <int|null>, "reason": <enum|null>}`. Filters (all optional, AND):
+
+        `type` (adgang|adresse), `kommunekode`, `regionskode`, `postnr`, `vejkode`,
+
+        `vejnavn`, `status`. Answered from Meili `total_hits` / MySQL COUNT in ~0.1
+        s;
+
+        a query that can''t return a real count cheaply returns `count=null` (with
+        a
+
+        `reason`) rather than blocking. See docs/TASK_address_count_api.md.
+
+
+        Requires an X-Api-Key (owner decision 2026-06-23 — no anonymous tier here).
+
+        soge calls it with a dedicated Enterprise key (soft cap → effectively
+
+        unlimited), so per-keystroke traffic is never rate-limited; the key''s monthly
+
+        quota is the only governor.'
+      operationId: address_count_api_v1_stats_address_count_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Address Count Api V1 Stats Address Count Get
+  /api/v1/webhooks:
+    get:
+      tags:
+      - webhooks
+      summary: List Webhooks
+      operationId: list_webhooks_api_v1_webhooks_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response List Webhooks Api V1 Webhooks Get
+      security:
+      - HTTPBearer: []
+    post:
+      tags:
+      - webhooks
+      summary: Create Webhook
+      operationId: create_webhook_api_v1_webhooks_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookCreate'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Create Webhook Api V1 Webhooks Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/webhooks/{webhook_id}:
+    delete:
+      tags:
+      - webhooks
+      summary: Delete Webhook
+      operationId: delete_webhook_api_v1_webhooks__webhook_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: webhook_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Webhook Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Delete Webhook Api V1 Webhooks  Webhook Id  Delete
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/api/v1/subscribe:
+    post:
+      summary: Subscribe
+      operationId: subscribe_api_v1_api_v1_subscribe_post
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Body_subscribe_api_v1_api_v1_subscribe_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/tak-for-tilmelding:
+    get:
+      summary: Takket
+      operationId: takket_api_v1_tak_for_tilmelding_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+  /dashboard/:
+    get:
+      tags:
+      - dashboard
+      summary: Home
+      operationId: home_dashboard__get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+  /dashboard/settings:
+    get:
+      tags:
+      - dashboard
+      summary: Settings Page
+      operationId: settings_page_dashboard_settings_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+    post:
+      tags:
+      - dashboard
+      summary: Settings Save
+      description: 'Self-service account settings: profile fields + password change
+        (the user is
+
+        already authenticated via the session, so a password change needs the current
+        one).'
+      operationId: settings_save_dashboard_settings_post
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Body_settings_save_dashboard_settings_post'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /dashboard/login:
+    get:
+      tags:
+      - dashboard
+      summary: Login Page
+      operationId: login_page_dashboard_login_get
+      parameters:
+      - name: error
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Error
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - dashboard
+      summary: Login Post
+      operationId: login_post_dashboard_login_post
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Body_login_post_dashboard_login_post'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /dashboard/signup:
+    get:
+      tags:
+      - dashboard
+      summary: Signup Page
+      operationId: signup_page_dashboard_signup_get
+      parameters:
+      - name: error
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Error
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - dashboard
+      summary: Signup Post
+      description: 'Stage 1: validate + email a 6-digit code. No user row created
+        yet.'
+      operationId: signup_post_dashboard_signup_post
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Body_signup_post_dashboard_signup_post'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /dashboard/signup/verify:
+    post:
+      tags:
+      - dashboard
+      summary: Signup Verify
+      description: 'Stage 2: consume code → create user → cookie session → /dashboard/keys.'
+      operationId: signup_verify_dashboard_signup_verify_post
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Body_signup_verify_dashboard_signup_verify_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /dashboard/signup/resend:
+    post:
+      tags:
+      - dashboard
+      summary: Signup Resend
+      operationId: signup_resend_dashboard_signup_resend_post
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Body_signup_resend_dashboard_signup_resend_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /dashboard/forgot:
+    get:
+      tags:
+      - dashboard
+      summary: Forgot Page
+      operationId: forgot_page_dashboard_forgot_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+    post:
+      tags:
+      - dashboard
+      summary: Forgot Post
+      description: Always go to reset step — don't leak whether email exists.
+      operationId: forgot_post_dashboard_forgot_post
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Body_forgot_post_dashboard_forgot_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /dashboard/forgot/reset:
+    post:
+      tags:
+      - dashboard
+      summary: Forgot Reset
+      operationId: forgot_reset_dashboard_forgot_reset_post
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Body_forgot_reset_dashboard_forgot_reset_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /dashboard/forgot/resend:
+    post:
+      tags:
+      - dashboard
+      summary: Forgot Resend
+      operationId: forgot_resend_dashboard_forgot_resend_post
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Body_forgot_resend_dashboard_forgot_resend_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /dashboard/logout:
+    get:
+      tags:
+      - dashboard
+      summary: Logout
+      operationId: logout_dashboard_logout_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /dashboard/keys:
+    get:
+      tags:
+      - dashboard
+      summary: Keys Page
+      operationId: keys_page_dashboard_keys_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+    post:
+      tags:
+      - dashboard
+      summary: Keys Create
+      operationId: keys_create_dashboard_keys_post
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Body_keys_create_dashboard_keys_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /dashboard/keys/{key_id}/revoke:
+    post:
+      tags:
+      - dashboard
+      summary: Keys Revoke
+      operationId: keys_revoke_dashboard_keys__key_id__revoke_post
+      parameters:
+      - name: key_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Key Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /dashboard/keys/{key_id}/reset-device:
+    post:
+      tags:
+      - dashboard
+      summary: Keys Reset Device
+      description: 'Approve a device change: clear the binding + lock so the next
+        request binds
+
+        fresh. This is the cabinet path to confirm a new device.'
+      operationId: keys_reset_device_dashboard_keys__key_id__reset_device_post
+      parameters:
+      - name: key_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Key Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /dashboard/usage:
+    get:
+      tags:
+      - dashboard
+      summary: Usage Page
+      operationId: usage_page_dashboard_usage_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+  /dashboard/billing:
+    get:
+      tags:
+      - dashboard
+      summary: Billing Page
+      operationId: billing_page_dashboard_billing_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+  /dashboard/bulk:
+    get:
+      tags:
+      - dashboard
+      summary: Bulk Page
+      operationId: bulk_page_dashboard_bulk_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+  /uk:
+    get:
+      tags:
+      - landing
+      summary: Index
+      operationId: index_uk_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+  /en:
+    get:
+      tags:
+      - landing
+      summary: Index
+      operationId: index_en_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+  /:
+    get:
+      tags:
+      - landing
+      summary: Index
+      operationId: index__get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+components:
+  schemas:
+    Body_bulk_cleanse_api_v1_bulk_cleanse_post:
+      properties:
+        file:
+          type: string
+          contentMediaType: application/octet-stream
+          title: File
+        vejnavn_col:
+          type: string
+          title: Vejnavn Col
+          default: vejnavn
+        husnr_col:
+          type: string
+          title: Husnr Col
+          default: husnr
+        postnr_col:
+          type: string
+          title: Postnr Col
+          default: postnr
+      type: object
+      required:
+      - file
+      title: Body_bulk_cleanse_api_v1_bulk_cleanse_post
+    Body_forgot_post_dashboard_forgot_post:
+      properties:
+        email:
+          type: string
+          title: Email
+      type: object
+      required:
+      - email
+      title: Body_forgot_post_dashboard_forgot_post
+    Body_forgot_resend_dashboard_forgot_resend_post:
+      properties:
+        email:
+          type: string
+          title: Email
+      type: object
+      required:
+      - email
+      title: Body_forgot_resend_dashboard_forgot_resend_post
+    Body_forgot_reset_dashboard_forgot_reset_post:
+      properties:
+        email:
+          type: string
+          title: Email
+        code:
+          type: string
+          title: Code
+        new_password:
+          type: string
+          title: New Password
+      type: object
+      required:
+      - email
+      - code
+      - new_password
+      title: Body_forgot_reset_dashboard_forgot_reset_post
+    Body_keys_create_dashboard_keys_post:
+      properties:
+        name:
+          type: string
+          title: Name
+        mode:
+          type: string
+          title: Mode
+      type: object
+      required:
+      - name
+      - mode
+      title: Body_keys_create_dashboard_keys_post
+    Body_login_post_dashboard_login_post:
+      properties:
+        email:
+          type: string
+          title: Email
+        password:
+          type: string
+          title: Password
+      type: object
+      required:
+      - email
+      - password
+      title: Body_login_post_dashboard_login_post
+    Body_settings_save_dashboard_settings_post:
+      properties:
+        action:
+          type: string
+          title: Action
+          default: profile
+        name:
+          type: string
+          title: Name
+          default: ''
+        company:
+          type: string
+          title: Company
+          default: ''
+        cvr:
+          type: string
+          title: Cvr
+          default: ''
+        current:
+          type: string
+          title: Current
+          default: ''
+        new:
+          type: string
+          title: New
+          default: ''
+        confirm:
+          type: string
+          title: Confirm
+          default: ''
+      type: object
+      title: Body_settings_save_dashboard_settings_post
+    Body_signup_post_dashboard_signup_post:
+      properties:
+        email:
+          type: string
+          title: Email
+        password:
+          type: string
+          title: Password
+        name:
+          type: string
+          title: Name
+          default: ''
+      type: object
+      required:
+      - email
+      - password
+      title: Body_signup_post_dashboard_signup_post
+    Body_signup_resend_dashboard_signup_resend_post:
+      properties:
+        email:
+          type: string
+          title: Email
+      type: object
+      required:
+      - email
+      title: Body_signup_resend_dashboard_signup_resend_post
+    Body_signup_verify_dashboard_signup_verify_post:
+      properties:
+        email:
+          type: string
+          title: Email
+        code:
+          type: string
+          title: Code
+      type: object
+      required:
+      - email
+      - code
+      title: Body_signup_verify_dashboard_signup_verify_post
+    Body_subscribe_api_v1_api_v1_subscribe_post:
+      properties:
+        email:
+          type: string
+          title: Email
+        name:
+          type: string
+          title: Name
+          default: ''
+        source:
+          type: string
+          title: Source
+          default: website
+      type: object
+      required:
+      - email
+      title: Body_subscribe_api_v1_api_v1_subscribe_post
+    CVRInput:
+      properties:
+        cvr:
+          type: string
+          title: Cvr
+      type: object
+      required:
+      - cvr
+      title: CVRInput
+    CheckoutRequest:
+      properties:
+        plan:
+          type: string
+          title: Plan
+          default: pro
+        success_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Success Url
+        cancel_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Cancel Url
+      type: object
+      title: CheckoutRequest
+    CreateKeyBody:
+      properties:
+        name:
+          type: string
+          title: Name
+        mode:
+          type: string
+          title: Mode
+          default: live
+        scopes:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Scopes
+      type: object
+      required:
+      - name
+      title: CreateKeyBody
+    EANInput:
+      properties:
+        ean:
+          type: string
+          title: Ean
+      type: object
+      required:
+      - ean
+      title: EANInput
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    IBANInput:
+      properties:
+        iban:
+          type: string
+          title: Iban
+      type: object
+      required:
+      - iban
+      title: IBANInput
+    LoginBody:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+        password:
+          type: string
+          title: Password
+      type: object
+      required:
+      - email
+      - password
+      title: LoginBody
+    MagicRequest:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+      type: object
+      required:
+      - email
+      title: MagicRequest
+    OtpForgotBody:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+      type: object
+      required:
+      - email
+      title: OtpForgotBody
+    OtpResendBody:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+        purpose:
+          type: string
+          enum:
+          - signup
+          - reset
+          title: Purpose
+      type: object
+      required:
+      - email
+      - purpose
+      title: OtpResendBody
+    OtpResetBody:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+        code:
+          type: string
+          pattern: ^\d{6}$
+          title: Code
+        new_password:
+          type: string
+          maxLength: 200
+          minLength: 8
+          title: New Password
+      type: object
+      required:
+      - email
+      - code
+      - new_password
+      title: OtpResetBody
+    OtpSignupBody:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+        password:
+          type: string
+          maxLength: 200
+          minLength: 8
+          title: Password
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        lang:
+          type: string
+          title: Lang
+          default: da
+      type: object
+      required:
+      - email
+      - password
+      title: OtpSignupBody
+    OtpVerifyBody:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+        code:
+          type: string
+          pattern: ^\d{6}$
+          title: Code
+      type: object
+      required:
+      - email
+      - code
+      title: OtpVerifyBody
+    PhoneInput:
+      properties:
+        phone:
+          type: string
+          title: Phone
+        country:
+          type: string
+          title: Country
+          default: DK
+      type: object
+      required:
+      - phone
+      title: PhoneInput
+    QualityInput:
+      properties:
+        vejnavn:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Vejnavn
+        husnr:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Husnr
+        etage:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Etage
+        door:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Door
+        postnr:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Postnr
+        postnr_navn:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Postnr Navn
+        kommunekode:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Kommunekode
+      type: object
+      title: QualityInput
+    SignupBody:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+        password:
+          type: string
+          maxLength: 200
+          minLength: 8
+          title: Password
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        company:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Company
+        cvr:
+          anyOf:
+          - type: string
+            pattern: ^\d{8}$
+          - type: 'null'
+          title: Cvr
+        lang:
+          type: string
+          title: Lang
+          default: da
+      type: object
+      required:
+      - email
+      - password
+      title: SignupBody
+    TokenResponse:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        token_type:
+          type: string
+          title: Token Type
+          default: Bearer
+        user:
+          additionalProperties: true
+          type: object
+          title: User
+      type: object
+      required:
+      - access_token
+      - user
+      title: TokenResponse
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    VaskInput:
+      properties:
+        vejnavn:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Vejnavn
+        husnr:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Husnr
+        etage:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Etage
+        dør:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Dør
+        postnr:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Postnr
+        supplerendebynavn:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Supplerendebynavn
+      type: object
+      title: VaskInput
+    WebhookCreate:
+      properties:
+        url:
+          type: string
+          title: Url
+        entities:
+          items:
+            type: string
+          type: array
+          title: Entities
+      type: object
+      required:
+      - url
+      - entities
+      title: WebhookCreate
+  securitySchemes:
+    APIKeyHeader:
+      type: apiKey
+      description: API key issued from /dashboard/keys. Free tier (1000/month per
+        IP) works without a key.
+      in: header
+      name: X-Api-Key
+    APIKeyQuery:
+      type: apiKey
+      description: API key as query parameter (DAWA-compat fallback).
+      in: query
+      name: api_key
+    HTTPBearer:
+      type: http
+      description: JWT issued from /api/v1/auth/login (dashboard sessions).
+      scheme: bearer
+    ApiKeyHeader:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: Issue a key in the dashboard (https://danadresse.dk). Free tier
+        works without a key at a lower IP rate limit.
+tags:
+- name: dawa:adresser
+  description: 'DAWA-compat: full addresses with etage/dør'
+- name: dawa:adgangsadresser
+  description: 'DAWA-compat: entry addresses (building-level)'
+- name: dawa:autocomplete
+  description: 'DAWA-compat: typo-tolerant search-as-you-type'
+- name: dawa:postnumre
+  description: 'DAWA-compat: postal codes'
+- name: dawa:kommuner
+  description: 'DAWA-compat: municipalities'
+- name: dawa:vejnavne
+  description: 'DAWA-compat: street names'
+- name: dawa:datavask
+  description: 'DAWA-compat: address cleansing (kategori A/B/C)'
+- name: enrich
+  description: 'Beyond DAWA: DAGI, BBR, climate, distance, quality'
+- name: bulk
+  description: Bulk CSV cleansing (async jobs)
+- name: auth
+  description: 'Dashboard auth: signup, login, OTP, password reset'
+- name: keys
+  description: 'Dashboard: manage API keys'
+- name: billing
+  description: 'Dashboard: subscription + invoicing'

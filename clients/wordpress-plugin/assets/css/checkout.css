@@ -1,0 +1,4 @@
+.danadresse-search { position: relative; }
+.danadresse-dropdown::-webkit-scrollbar { width: 6px; }
+.danadresse-dropdown::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+.danadresse-item:last-child { border-bottom: none !important; }
