@@ -77,6 +77,9 @@ on the same path, pointed at our API. Swap only the host and add your key — yo
 ```
 
 The key can also be passed as `{ apiKey: '…' }` or `params: { api_key: '…' }`.
+On a public site, lock the key to your domain(s) under **API keys → Allowed domains** in the
+dashboard (or `PATCH /api/v1/keys/{id}` with `{"allowed_origins": ["www.example.dk"]}`): it then
+works for every visitor without device binding, only from those domains, for address lookups.
 Guide: [danadresse.dk/migration#autocomplete-widget](https://danadresse.dk/en/migration#autocomplete-widget)
 
 ## 📦 Examples & clients

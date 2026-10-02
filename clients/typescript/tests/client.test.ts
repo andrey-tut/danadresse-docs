@@ -8,7 +8,15 @@ describe('DanadresseClient', () => {
     });
 
     it('throws when fetch is not available', () => {
-        expect(() => new DanadresseClient({ fetch: undefined as never })).toThrow(/fetch/);
+        // Node ≥18 has a global fetch the client falls back to — remove it for this case.
+        const saved = globalThis.fetch;
+        // @ts-expect-error deliberately unset
+        globalThis.fetch = undefined;
+        try {
+            expect(() => new DanadresseClient({ fetch: undefined as never })).toThrow(/fetch/);
+        } finally {
+            globalThis.fetch = saved;
+        }
     });
 
     it('builds correct URL with query params', async () => {

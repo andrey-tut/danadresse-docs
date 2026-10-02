@@ -13,14 +13,27 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --clean",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm test"
   },
-  "keywords": ["dawa", "danish", "address", "autocomplete", "geocoding", "denmark", "lynbro"],
+  "keywords": [
+    "dawa",
+    "danish",
+    "address",
+    "autocomplete",
+    "geocoding",
+    "denmark",
+    "lynbro"
+  ],
   "author": "LynBro ApS <hello@lynbro.dk>",
   "license": "MIT",
   "homepage": "https://danadresse.dk",
@@ -39,5 +52,8 @@
     "tsup": "^8.2.4",
     "typescript": "^5.5.4",
     "vitest": "^2.0.5"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

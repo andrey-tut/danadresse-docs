@@ -6534,6 +6534,64 @@
       }
     },
     "/api/v1/keys/{key_id}": {
+      "patch": {
+        "tags": [
+          "keys"
+        ],
+        "summary": "Set Key Origins",
+        "description": "Lock a key to the web domains it is embedded on (browser key), or pass an empty\nlist to unlock. Locked keys skip device/IP binding but only answer requests whose\nOrigin/Referer matches, and only for address endpoints.",
+        "operationId": "set_key_origins_api_v1_keys__key_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OriginsBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Set Key Origins Api V1 Keys  Key Id  Patch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "delete": {
         "tags": [
           "keys"
@@ -8947,6 +9005,58 @@
         }
       }
     },
+    "/dashboard/keys/{key_id}/origins": {
+      "post": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Keys Set Origins",
+        "description": "Lock a key to the web domains it's embedded on (browser key) — or clear it.",
+        "operationId": "keys_set_origins_dashboard_keys__key_id__origins_post",
+        "parameters": [
+          {
+            "name": "key_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_keys_set_origins_dashboard_keys__key_id__origins_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/dashboard/keys/{key_id}/reset-device": {
       "post": {
         "tags": [
@@ -9219,6 +9329,17 @@
           "mode"
         ],
         "title": "Body_keys_create_dashboard_keys_post"
+      },
+      "Body_keys_set_origins_dashboard_keys__key_id__origins_post": {
+        "properties": {
+          "origins": {
+            "type": "string",
+            "title": "Origins",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "Body_keys_set_origins_dashboard_keys__key_id__origins_post"
       },
       "Body_login_post_dashboard_login_post": {
         "properties": {
@@ -9664,6 +9785,20 @@
           "email"
         ],
         "title": "MagicRequest"
+      },
+      "OriginsBody": {
+        "properties": {
+          "allowed_origins": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Allowed Origins",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "OriginsBody"
       },
       "OtpForgotBody": {
         "properties": {

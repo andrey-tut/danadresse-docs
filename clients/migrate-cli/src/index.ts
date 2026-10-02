@@ -58,7 +58,10 @@ function parseArgs(argv: string[]): CliOptions {
         switch (a) {
             case '--write': case '-w': opts.write = true; break;
             case '--target': case '-t': opts.target = argv[++i] ?? '.'; break;
-            case '--key':              opts.keyHint = argv[++i] ?? null; break;
+            case '--key': case '--apikey': opts.keyHint = argv[++i] ?? null; break;
+            // Subcommand form used in our docs: `scan <path>` (dry-run) / `rewrite <path>`.
+            case 'scan':               opts.write = false; break;
+            case 'rewrite':            opts.write = true; break;
             case '--help': case '-h':  opts.showHelp = true; break;
             default:
                 if (a.startsWith('--')) console.warn(pc.yellow(`Unknown flag: ${a}`));
@@ -74,6 +77,8 @@ ${pc.bold('@danadresse/migrate-cli')} — Migrate codebase from DAWA → Danadre
 
 ${pc.bold('Usage:')}
     npx @danadresse/migrate-cli [options] [path]
+    npx @danadresse/migrate-cli scan <path>          # same as the default dry-run
+    npx @danadresse/migrate-cli rewrite <path>       # same as --write
 
 ${pc.bold('Options:')}
     -w, --write              Apply changes (default: dry-run with diff)
