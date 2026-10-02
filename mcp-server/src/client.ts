@@ -6,10 +6,10 @@
  * headers (exposed via getRateLimit()) and retries transient failures
  * (429 / 5xx / network / timeout) with bounded backoff.
  *
- * Authentication: optional X-Api-Key. The free tier is per-IP (1 000 calls/
- * MONTH); passing DANADRESSE_API_KEY raises that to whatever the key's plan
- * allows (enterprise = unlimited). The server enforces the same limits whether
- * you call it directly or through this MCP server.
+ * Authentication: X-Api-Key is required — keyless calls get 401. A free key
+ * gives 2 000 API + 250 MCP calls/month; MCP calls meter against their own
+ * monthly quota (Free 250 / Basic 5 000 / Pro 25 000 / Enterprise 200 000),
+ * identified by the danadresse-mcp User-Agent this client sends.
  */
 
 const RETRYABLE_STATUS = new Set([429, 502, 503, 504]);

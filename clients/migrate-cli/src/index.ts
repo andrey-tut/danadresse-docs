@@ -2,8 +2,9 @@
 /**
  * @danadresse/migrate-cli
  *
- * Scans a project for DAWA URLs (dawa.aws.dk, api.dataforsyningen.dk) and
- * either prints a diff or writes replacements.
+ * Scans a project for DAWA URLs (dawa.aws.dk, api.dataforsyningen.dk, and the
+ * dawa-autocomplete2 widget on cdn.dataforsyningen.dk) and either prints a diff
+ * or writes replacements.
  *
  * Usage:
  *   npx @danadresse/migrate-cli                  # dry-run, show diff
@@ -20,7 +21,10 @@ import pc from 'picocolors';
 const SOURCE_PATTERNS = [
     /https?:\/\/dawa\.aws\.dk/g,
     /https?:\/\/api\.dataforsyningen\.dk/g,
+    // DAWA's JS widget on the Dataforsyningen CDN — Danadresse serves the same paths.
+    /https?:\/\/cdn\.dataforsyningen\.dk(?=\/dawa\/assets\/dawa-autocomplete2\/)/g,
 ];
+const WIDGET_RE = /dawa-autocomplete2(\.min)?\.js/;
 const TARGET_URL = 'https://api.danadresse.dk';
 
 const DEFAULT_GLOBS = [
@@ -86,6 +90,7 @@ ${pc.bold('Examples:')}
 ${pc.dim('What it replaces:')}
     https://dawa.aws.dk           → https://api.danadresse.dk
     https://api.dataforsyningen.dk → https://api.danadresse.dk
+    https://cdn.dataforsyningen.dk/dawa/assets/dawa-autocomplete2/… → https://api.danadresse.dk/dawa/assets/dawa-autocomplete2/…
 
 ${pc.dim('Remember:')} after migration, add ${pc.cyan('X-Api-Key')} header to your requests.
 Get a free key at ${pc.cyan('https://danadresse.dk/dashboard/keys')}
@@ -190,6 +195,16 @@ export async function run(argv: string[]): Promise<void> {
 
     // Reminder про API key
     const keyHint = opts.keyHint ?? 'dawa_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+    const usesWidget = scan.some(f => f.hits.some(h => WIDGET_RE.test(h.context)));
+    if (usesWidget) {
+        console.log(`
+${pc.bold(pc.cyan('⚠ DAWA autocomplete widget found'))} (dawa-autocomplete2). It is hosted on the same
+path at Danadresse — append your key to the script URL, nothing else changes:
+
+<script src="${TARGET_URL}/js/autocomplete/dawa-autocomplete2.min.js?key=${keyHint}"></script>
+
+${pc.dim('Guide:')} ${pc.cyan('https://danadresse.dk/en/migration#autocomplete-widget')}`);
+    }
     console.log(`
 ${pc.bold(pc.cyan('⚠ Next step:'))} add an ${pc.cyan('X-Api-Key')} header to your requests.
 
@@ -203,6 +218,6 @@ import httpx
 r = httpx.get('${TARGET_URL}/autocomplete', params={'q': 'Råd'},
               headers={'X-Api-Key': '${keyHint}'})
 
-${pc.bold('Free 1000 calls/month:')} ${pc.cyan('https://danadresse.dk/dashboard/keys')}
+${pc.bold('Free 2,000 calls/month:')} ${pc.cyan('https://danadresse.dk/dashboard/keys')}
 `);
 }

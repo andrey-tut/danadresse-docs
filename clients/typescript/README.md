@@ -57,9 +57,12 @@ All field names, IDs (UUIDv4), and response shapes are **identical** to DAWA.
 
 | Tier | Limit | Price |
 |------|-------|-------|
-| Free | 1 000 / day | 0 DKK |
-| Pro | 100 000 / month | 199 DKK / mo |
-| Enterprise | custom | Contact us |
+| Free | 2 000 API + 250 MCP / month | 0 DKK |
+| Basic | 60 000 API + 5 000 MCP / month | 89 DKK/mo (71 DKK/mo billed yearly) |
+| Pro | 350 000 API + 25 000 MCP / month | 279 DKK/mo (223 DKK/mo billed yearly) |
+| Enterprise | 2.5M API + 200 000 MCP / month | from 499 DKK/mo |
+
+Prices ex VAT. Overage: 0.001 DKK per extra API call.
 
 Sign up: <https://danadresse.dk>
 

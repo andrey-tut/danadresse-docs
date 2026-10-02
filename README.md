@@ -11,7 +11,7 @@
 [![License: MIT](https://img.shields.io/badge/examples-MIT-green)](LICENSE)
 
 **Danadresse** is a drop-in replacement for [DAWA](https://dawa.aws.dk) (Danmarks
-Adressers Web API), which **closes 17 August 2026**. Same endpoints, same query
+Adressers Web API), which **closes 1 October 2026**. Same endpoints, same query
 parameters, same JSON shapes — migration is a base-URL change plus an
 `X-Api-Key` header. Backed by its own data from Datafordeleren (DAR, BBR,
 Matriklen, DAGI), so it keeps working after DAWA shuts down.
@@ -23,17 +23,17 @@ Matriklen, DAGI), so it keeps working after DAWA shuts down.
 
 [![Swagger UI](screenshots/swagger.png)](https://andrey-tut.github.io/danadresse-docs/swagger.html)
 
-- **Swagger UI (try it live):** <https://andrey-tut.github.io/danadresse-docs/swagger.html> — pick the `api.danadresse.dk` server, hit **Authorize** (or go keyless on the free tier) and **Try it out** on any endpoint
+- **Swagger UI (try it live):** <https://andrey-tut.github.io/danadresse-docs/swagger.html> — pick the `api.danadresse.dk` server, hit **Authorize** with your API key (free key: 2 000 calls/month) and **Try it out** on any endpoint
 - **Redoc:** <https://andrey-tut.github.io/danadresse-docs/>
 - **OpenAPI spec:** [`openapi.yaml`](openapi.yaml) · [`openapi.json`](openapi.json) — 130+ endpoints
 
 ## 🚀 Quick start
 
 ```bash
-# No key needed for the free tier (lower per-IP rate limit):
-curl "https://api.danadresse.dk/autocomplete?q=rådhuspladsen+1+københavn"
+# A key is required on every call — get a free one (2 000 calls/month) at https://danadresse.dk:
+curl -H "X-Api-Key: dawa_live_…" \
+  "https://api.danadresse.dk/autocomplete?q=rådhuspladsen+1+københavn"
 
-# With a key (get one at https://danadresse.dk):
 curl -H "X-Api-Key: dawa_live_…" \
   "https://api.danadresse.dk/datavask/adresser?betegnelse=rådhuspladsen+1+1550+københavn"
 ```
@@ -61,6 +61,23 @@ quality scoring). No install — `npx` fetches it:
 ```
 
 Full guide: [`examples/mcp`](examples/mcp) · source: [`mcp-server`](mcp-server).
+
+## 🔁 DAWA's autocomplete widget (dawa-autocomplete2)
+
+Loaded `dawa-autocomplete2.min.js` from dawa.aws.dk? We host the same library (v1.1.0, MIT)
+on the same path, pointed at our API. Swap only the host and add your key — your
+`dawaAutocomplete.dawaAutocomplete(…)` code and every option stay unchanged:
+
+```html
+<!-- before -->
+<script src="https://dawa.aws.dk/js/autocomplete/dawa-autocomplete2.min.js"></script>
+<!-- after -->
+<script src="https://api.danadresse.dk/js/autocomplete/dawa-autocomplete2.min.js?key=YOUR_KEY"></script>
+<link rel="stylesheet" href="https://api.danadresse.dk/css/dawa-autocomplete2.css">
+```
+
+The key can also be passed as `{ apiKey: '…' }` or `params: { api_key: '…' }`.
+Guide: [danadresse.dk/migration#autocomplete-widget](https://danadresse.dk/en/migration#autocomplete-widget)
 
 ## 📦 Examples & clients
 

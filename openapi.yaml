@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
   title: Danadresse API — DAWA drop-in replacement
-  summary: Drop-in REST replacement for dawa.aws.dk · Free tier 1000/month
+  summary: Drop-in REST replacement for dawa.aws.dk · Free tier 2000/month
   description: '**Drop-in replacement for the Danish Address Web API (DAWA).** DAWA
-    closes on 17 August 2026 — Danadresse takes over with the exact same endpoints,
+    closes on 1 October 2026 — Danadresse takes over with the exact same endpoints,
     query parameters, JSON shapes and UUIDs.
 
 
@@ -16,7 +16,7 @@ info:
     3. Ship. Your DAR/DAGI IDs still resolve.
 
 
-    Free tier: 1 000 calls/month per IP (no key needed). Paid tiers: Hobby/Basic/Pro/Enterprise
+    Every request needs a key; free tier is 2 000 calls/month. Paid tiers: Hobby/Basic/Pro/Enterprise
     — see <https://danadresse.dk/#pricing>.
 
 
@@ -218,6 +218,38 @@ paths:
           description: Widget flag (accepted).
           title: Multilinje
         description: Widget flag (accepted).
+      - name: id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Return the single suggestion for this adresse/adgangsadresse
+            UUID (dawa-autocomplete2's `id` option).
+          title: Id
+        description: Return the single suggestion for this adresse/adgangsadresse
+          UUID (dawa-autocomplete2's `id` option).
+      - name: kommunekode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Restrict to one kommune, e.g. `101` or `0101` (DAWA filter).
+          title: Kommunekode
+        description: Restrict to one kommune, e.g. `101` or `0101` (DAWA filter).
+      - name: postnr
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Restrict to one postnummer, e.g. `9000` (DAWA filter).
+          title: Postnr
+        description: Restrict to one postnummer, e.g. `9000` (DAWA filter).
       responses:
         '200':
           description: Ranked suggestions
@@ -2550,9 +2582,12 @@ paths:
         in: query
         required: false
         schema:
-          type: boolean
-          default: false
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Medtag nedlagte adresser (bar flag)
           title: Medtagnedlagte
+        description: Medtag nedlagte adresser (bar flag)
       - name: kvh
         in: query
         required: false
@@ -2597,6 +2632,7 @@ paths:
         schema:
           enum:
           - json
+          - csv
           - geojson
           - ndjson
           type: string
@@ -2906,6 +2942,16 @@ paths:
           description: 1=aktiv (default), 2=nedlagt
           title: Status
         description: 1=aktiv (default), 2=nedlagt
+      - name: medtagnedlagte
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Medtag nedlagte adresser (bar flag)
+          title: Medtagnedlagte
+        description: Medtag nedlagte adresser (bar flag)
       - name: srid
         in: query
         required: false
@@ -3474,7 +3520,11 @@ paths:
       description: 'Event stream for an entity. Requires an API key (Enterprise feature).
 
 
-        Proxied to DAWA''s authoritative event log until cutover; same JSON shape.'
+        Served from our native event log when `replikering_serve_native` is on
+
+        (the post-cutover mode); otherwise proxied 1:1 to DAWA. Same JSON shape
+
+        either way, so clients never change.'
       operationId: haendelser_replikering__entitet__haendelser_get
       parameters:
       - name: entitet
@@ -4015,6 +4065,71 @@ paths:
                 additionalProperties: true
                 type: object
                 title: Response Create Portal Api V1 Billing Portal Post
+      security:
+      - HTTPBearer: []
+  /api/v1/billing/preview-proration:
+    post:
+      tags:
+      - billing
+      summary: Preview Proration
+      description: What the customer would be charged now for switching to {plan,
+        interval}.
+      operationId: preview_proration_api_v1_billing_preview_proration_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePlanRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Preview Proration Api V1 Billing Preview Proration
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/billing/change-plan:
+    post:
+      tags:
+      - billing
+      summary: Change Plan
+      description: 'Switch an existing subscription''s plan. Upgrade → prorate + invoice
+        now;
+
+        downgrade → no proration/refund (matches the cancel policy).'
+      operationId: change_plan_api_v1_billing_change_plan_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePlanRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Change Plan Api V1 Billing Change Plan Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
   /api/v1/billing/status:
@@ -4955,33 +5070,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-  /api/v1/api/v1/subscribe:
+  /api/v1/subscribe:
     post:
       summary: Subscribe
-      operationId: subscribe_api_v1_api_v1_subscribe_post
+      operationId: subscribe_api_v1_subscribe_post
       requestBody:
         content:
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Body_subscribe_api_v1_api_v1_subscribe_post'
+              $ref: '#/components/schemas/Body_subscribe_api_v1_subscribe_post'
         required: true
       responses:
         '200':
           description: Successful Response
           content:
-            text/html:
-              schema:
-                type: string
+            application/json:
+              schema: {}
         '422':
           description: Validation Error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-  /api/v1/tak-for-tilmelding:
+  /tak-for-tilmelding:
     get:
       summary: Takket
-      operationId: takket_api_v1_tak_for_tilmelding_get
+      operationId: takket_tak_for_tilmelding_get
       responses:
         '200':
           description: Successful Response
@@ -5058,6 +5172,13 @@ paths:
           - type: string
           - type: 'null'
           title: Error
+      - name: next
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: Next
       responses:
         '200':
           description: Successful Response
@@ -5094,6 +5215,56 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /dashboard/login/verify:
+    post:
+      tags:
+      - dashboard
+      summary: Login Verify
+      description: 'Second factor: consume the login OTP → set the session cookie.'
+      operationId: login_verify_dashboard_login_verify_post
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Body_login_verify_dashboard_login_verify_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /dashboard/login/resend:
+    post:
+      tags:
+      - dashboard
+      summary: Login Resend
+      operationId: login_resend_dashboard_login_resend_post
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Body_login_resend_dashboard_login_resend_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /dashboard/signup:
     get:
       tags:
@@ -5109,6 +5280,27 @@ paths:
           - type: string
           - type: 'null'
           title: Error
+      - name: plan
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: Plan
+      - name: interval
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: Interval
+      - name: next
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: Next
       responses:
         '200':
           description: Successful Response
@@ -5148,12 +5340,128 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /dashboard/buy:
+    get:
+      tags:
+      - dashboard
+      summary: Buy
+      description: 'One-click path to payment. Logged in → straight to Stripe Checkout;
+
+        anonymous → signup (email + code) carrying the intent, then back here.
+
+        Default interval is YEARLY (the pages offer the yearly per-month price by
+
+        default; every CTA still passes interval explicitly).'
+      operationId: buy_dashboard_buy_get
+      parameters:
+      - name: plan
+        in: query
+        required: false
+        schema:
+          type: string
+          default: pro
+          title: Plan
+      - name: interval
+        in: query
+        required: false
+        schema:
+          type: string
+          default: year
+          title: Interval
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /dashboard/welcome:
+    get:
+      tags:
+      - dashboard
+      summary: Welcome
+      description: "Post-payment return page. The buyer comes back from Stripe here.\n\
+        \nThree jobs, so the payment can never feel \"lost\":\n  1. Recover WHO paid\
+        \ from the Checkout Session (client_reference_id → email)\n     and **re-establish\
+        \ the login cookie** — never dump them at /login.\n  2. Grant the plan + bind\
+        \ customer/subscription IMMEDIATELY (belt-and-braces\n     with the webhook,\
+        \ which may lag a few seconds).\n  3. Make sure they leave with a working\
+        \ live key, and (if the account has no\n     password yet — the deferred-password\
+        \ buy flow) prompt them to set one."
+      operationId: welcome_dashboard_welcome_get
+      parameters:
+      - name: session_id
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: Session Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /dashboard/set-password:
+    post:
+      tags:
+      - dashboard
+      summary: Set Password
+      description: 'Set an initial password for the deferred-password buy flow. Allowed
+        only when
+
+        the account currently has NO password (otherwise use settings, which requires
+        the
+
+        current one). Session-authenticated.'
+      operationId: set_password_dashboard_set_password_post
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Body_set_password_dashboard_set_password_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /dashboard/signup/verify:
     post:
       tags:
       - dashboard
       summary: Signup Verify
-      description: 'Stage 2: consume code → create user → cookie session → /dashboard/keys.'
+      description: 'Stage 2: consume code → create user → cookie session → keys (or
+        straight
+
+        to Stripe Checkout when the signup carried a buy intent from the pricing page).
+
+
+        In buy mode the form step collects no password, so the verify step offers
+        to
+
+        create one here (optional — the buyer can also skip and set it after payment).'
       operationId: signup_verify_dashboard_signup_verify_post
       requestBody:
         content:
@@ -5367,10 +5675,15 @@ paths:
       tags:
       - dashboard
       summary: Keys Reset Device
-      description: 'Approve a device change: clear the binding + lock so the next
-        request binds
+      description: 'Unlock / rebind a key: clear the binding + all enforcement state
+        so the next
 
-        fresh. This is the cabinet path to confirm a new device.'
+        request binds fresh. This is the cabinet path to approve a new device or lift
+        a
+
+        block. Also clears the Redis warning-dedup + account-IP set so a fresh start
+
+        isn''t immediately re-flagged.'
       operationId: keys_reset_device_dashboard_keys__key_id__reset_device_post
       parameters:
       - name: key_id
@@ -5499,6 +5812,10 @@ components:
         email:
           type: string
           title: Email
+        cf-turnstile-response:
+          type: string
+          title: Cf-Turnstile-Response
+          default: ''
       type: object
       required:
       - email
@@ -5550,11 +5867,62 @@ components:
         password:
           type: string
           title: Password
+        next:
+          type: string
+          title: Next
+          default: ''
+        cf-turnstile-response:
+          type: string
+          title: Cf-Turnstile-Response
+          default: ''
       type: object
       required:
       - email
       - password
       title: Body_login_post_dashboard_login_post
+    Body_login_resend_dashboard_login_resend_post:
+      properties:
+        email:
+          type: string
+          title: Email
+        next:
+          type: string
+          title: Next
+          default: ''
+      type: object
+      required:
+      - email
+      title: Body_login_resend_dashboard_login_resend_post
+    Body_login_verify_dashboard_login_verify_post:
+      properties:
+        email:
+          type: string
+          title: Email
+        code:
+          type: string
+          title: Code
+        next:
+          type: string
+          title: Next
+          default: ''
+      type: object
+      required:
+      - email
+      - code
+      title: Body_login_verify_dashboard_login_verify_post
+    Body_set_password_dashboard_set_password_post:
+      properties:
+        new:
+          type: string
+          title: New
+        confirm:
+          type: string
+          title: Confirm
+          default: ''
+      type: object
+      required:
+      - new
+      title: Body_set_password_dashboard_set_password_post
     Body_settings_save_dashboard_settings_post:
       properties:
         action:
@@ -5595,20 +5963,52 @@ components:
         password:
           type: string
           title: Password
+          default: ''
         name:
           type: string
           title: Name
           default: ''
+        plan:
+          type: string
+          title: Plan
+          default: ''
+        interval:
+          type: string
+          title: Interval
+          default: ''
+        next:
+          type: string
+          title: Next
+          default: ''
+        company_website:
+          type: string
+          title: Company Website
+          default: ''
+        cf-turnstile-response:
+          type: string
+          title: Cf-Turnstile-Response
+          default: ''
       type: object
       required:
       - email
-      - password
       title: Body_signup_post_dashboard_signup_post
     Body_signup_resend_dashboard_signup_resend_post:
       properties:
         email:
           type: string
           title: Email
+        plan:
+          type: string
+          title: Plan
+          default: ''
+        interval:
+          type: string
+          title: Interval
+          default: ''
+        next:
+          type: string
+          title: Next
+          default: ''
       type: object
       required:
       - email
@@ -5621,12 +6021,28 @@ components:
         code:
           type: string
           title: Code
+        plan:
+          type: string
+          title: Plan
+          default: ''
+        interval:
+          type: string
+          title: Interval
+          default: ''
+        next:
+          type: string
+          title: Next
+          default: ''
+        password:
+          type: string
+          title: Password
+          default: ''
       type: object
       required:
       - email
       - code
       title: Body_signup_verify_dashboard_signup_verify_post
-    Body_subscribe_api_v1_api_v1_subscribe_post:
+    Body_subscribe_api_v1_subscribe_post:
       properties:
         email:
           type: string
@@ -5639,10 +6055,18 @@ components:
           type: string
           title: Source
           default: website
+        lang:
+          type: string
+          title: Lang
+          default: da
+        cf-turnstile-response:
+          type: string
+          title: Cf-Turnstile-Response
+          default: ''
       type: object
       required:
       - email
-      title: Body_subscribe_api_v1_api_v1_subscribe_post
+      title: Body_subscribe_api_v1_subscribe_post
     CVRInput:
       properties:
         cvr:
@@ -5652,12 +6076,29 @@ components:
       required:
       - cvr
       title: CVRInput
+    ChangePlanRequest:
+      properties:
+        plan:
+          type: string
+          title: Plan
+        interval:
+          type: string
+          title: Interval
+          default: month
+      type: object
+      required:
+      - plan
+      title: ChangePlanRequest
     CheckoutRequest:
       properties:
         plan:
           type: string
           title: Plan
           default: pro
+        interval:
+          type: string
+          title: Interval
+          default: month
         success_url:
           anyOf:
           - type: string
@@ -6011,8 +6452,8 @@ components:
   securitySchemes:
     APIKeyHeader:
       type: apiKey
-      description: API key issued from /dashboard/keys. Free tier (1000/month per
-        IP) works without a key.
+      description: 'API key issued from /dashboard/keys — required on every request.
+        Free tier: 2000 calls/month with a free key.'
       in: header
       name: X-Api-Key
     APIKeyQuery:
@@ -6028,8 +6469,8 @@ components:
       type: apiKey
       in: header
       name: X-Api-Key
-      description: Issue a key in the dashboard (https://danadresse.dk). Free tier
-        works without a key at a lower IP rate limit.
+      description: Issue a key in the dashboard (https://danadresse.dk). Required
+        on every request — the free key includes 2 000 API calls + 250 MCP calls/month.
 tags:
 - name: dawa:adresser
   description: 'DAWA-compat: full addresses with etage/dør'

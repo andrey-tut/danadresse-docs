@@ -17,7 +17,7 @@ Danadresse is a drop-in replacement for the official DAWA API (api.dataforsyning
 * **Auto-fill** — selecting an address fills street, postcode, city.
 * **Validation (datavask)** — option to validate addresses on submit and warn if uncertain.
 * **Shortcode** `[danadresse_search]` for standalone use.
-* **Free tier**: 1,000 calls/month, no credit card. [Get API key →](https://danadresse.dk/dashboard/keys)
+* **Free tier**: 2,000 calls/month, no credit card. [Get API key →](https://danadresse.dk/dashboard/keys)
 
 Data source: Klimadatastyrelsen DAR (CC BY 4.0). 2.7M Danish addresses, updated every 15 minutes.
 
@@ -33,7 +33,7 @@ Data source: Klimadatastyrelsen DAR (CC BY 4.0). 2.7M Danish addresses, updated 
 No — but it's 100% API-compatible. DAWA closes Aug 17, 2026; we use the same underlying data (DAR from Klimadatastyrelsen).
 
 = Free tier limits? =
-1,000 calls/month forever. For a typical small shop this is plenty.
+2,000 calls/month forever. For a typical small shop this is plenty.
 
 = GDPR? =
 EU servers (Germany). Addresses are public data (CC BY 4.0). API calls logged 30 days for billing only.

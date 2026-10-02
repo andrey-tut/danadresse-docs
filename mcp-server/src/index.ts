@@ -17,8 +17,9 @@
  *  10. list_kommuner          — municipalities (by kode or name)
  *  11. list_vejnavne          — street-name search
  *
- * Set DANADRESSE_API_KEY (recommended, 100k/mo on Basic). If omitted the
- * server runs against the free per-IP tier (1 000 calls/month).
+ * Set DANADRESSE_API_KEY (required — keyless calls get 401). A free key gives
+ * 2 000 API + 250 MCP calls/month; MCP calls have their own quota
+ * (Free 250 / Basic 5 000 / Pro 25 000 / Enterprise 200 000 per month).
  *
  *   "danadresse": {
  *     "command": "npx",
@@ -143,7 +144,7 @@ async function main(): Promise<void> {
   // STDOUT is reserved for the JSON-RPC framing — never write to it.
   process.stderr.write(
     `[danadresse-mcp ${VERSION}] ready — ${TOOL_LIST.length} tools registered ` +
-      `(${process.env.DANADRESSE_API_KEY ? "authenticated" : "free tier"})\n`
+      `(${process.env.DANADRESSE_API_KEY ? "authenticated" : "no key — requests will get 401"})\n`
   );
 }
 

@@ -70,7 +70,7 @@ Any MCP client that supports stdio transport works. The binary is `danadresse-mc
 
 ## Get an API key
 
-A key is **optional** — without one you get the free per-IP tier (1 000 calls/month). With a key, your quota is your plan's: Basic 100 000/month, Pro 500 000/month, Enterprise unlimited. The server reports the remaining monthly quota after each call and retries 429/5xx with backoff — same limits as calling the API directly.
+A key is **required** — keyless calls get `401`. A free key gives you 2 000 API calls + 250 MCP calls/month. MCP calls have their own monthly quota, separate from the API quota: Free 250, Basic 5 000, Pro 25 000, Enterprise 200 000 MCP calls/month (overage 0.05 DKK/call on paid plans). The server sends the `danadresse-mcp` User-Agent so calls meter against your MCP quota; rate-limit headers show the remaining MCP budget after each call, and 429/5xx are retried with backoff.
 
 1. Sign up at <https://danadresse.dk/dashboard/signup>
 2. Create a key at <https://danadresse.dk/dashboard/keys>
@@ -80,7 +80,7 @@ A key is **optional** — without one you get the free per-IP tier (1 000 calls/
 
 | Var | Default | Purpose |
 |---|---|---|
-| `DANADRESSE_API_KEY` | — | Optional `X-Api-Key` header |
+| `DANADRESSE_API_KEY` | — | Required `X-Api-Key` header (free key: danadresse.dk/dashboard/signup) |
 | `DANADRESSE_API_URL` | `https://api.danadresse.dk` | Override for staging/self-hosted |
 | `DANADRESSE_TIMEOUT_MS` | `15000` | Per-request timeout |
 
